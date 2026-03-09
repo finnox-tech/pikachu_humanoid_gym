@@ -175,93 +175,22 @@ class PikachuEnv(LeggedRobot):
         sin_pos_l = sin_pos.clone()
         sin_pos_r = sin_pos.clone()
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
+        scale_1 = self.cfg.rewards.target_joint_pos_scale
+        scale_2 = 2 * scale_1
         left_sign = float(getattr(self.cfg.rewards, "left_ref_sign", 1.0))
         right_sign = float(getattr(self.cfg.rewards, "right_ref_sign", 1.0))
-        l_hip_s = float(getattr(self.cfg.rewards, "left_hip_ref_sign", 1.0))
-        l_knee_s = float(getattr(self.cfg.rewards, "left_knee_ref_sign", 1.0))
-        l_ankle_s = float(getattr(self.cfg.rewards, "left_ankle_ref_sign", 1.0))
-        r_hip_s = float(getattr(self.cfg.rewards, "right_hip_ref_sign", 1.0))
-        r_knee_s = float(getattr(self.cfg.rewards, "right_knee_ref_sign", 1.0))
-        r_ankle_s = float(getattr(self.cfg.rewards, "right_ankle_ref_sign", 1.0))
-
-        if bool(getattr(self.cfg.rewards, "use_planar_leg_ik", False)):
-            # Planar 2-link IK for hip_pitch-knee-ankle.
-            l1 = float(getattr(self.cfg.rewards, "length_HipPitch_Knee", 0.07))
-            l2 = float(getattr(self.cfg.rewards, "length_Knee_Ankle", 0.07))
-            eps = 1e-6
-            leg_len = max(l1 + l2, eps)
-            z_lift = min(float(self.cfg.rewards.target_feet_height), 0.35 * leg_len)
-            # Standing radius as IK zero point; keep away from singularity.
-            r_stance = min(leg_len - 0.01, leg_len - eps)
-            r_stance = max(r_stance, abs(l1 - l2) + 0.01)
-
-            # Left leg uses negative half-wave, right uses positive half-wave.
-            sin_pos_l[sin_pos_l > 0] = 0
-            sin_pos_r[sin_pos_r < 0] = 0
-
-            def solve_q123(r):
-                # Vertical lift only: foot x=0 in hip frame.
-                x = torch.zeros_like(r)
-                z = -r
-                r2 = x * x + z * z
-                cos_q2 = (r2 - l1 * l1 - l2 * l2) / (2.0 * l1 * l2)
-                cos_q2 = torch.clamp(cos_q2, -1.0, 1.0)
-                q2 = torch.acos(cos_q2)
-                q1 = torch.atan2(z, x) - torch.atan2(l2 * torch.sin(q2), l1 + l2 * torch.cos(q2))
-                q3 = -(q1 + q2)
-                return q1, q2, q3
-
-            q1_0, q2_0, q3_0 = solve_q123(
-                torch.full((self.num_envs,), r_stance, device=self.device, dtype=self.dof_pos.dtype)
-            )
-
-            def solve_leg(raw_wave, hip_idx, knee_idx, ankle_idx):
-                # raw_wave in [-1, 0] or [0, 1], stance=0.
-                swing = torch.abs(raw_wave)  # [0,1]
-                min_r = abs(l1 - l2) + eps
-                max_r = (l1 + l2) - eps
-                r = torch.clamp(r_stance - z_lift * swing, min=min_r, max=max_r)
-                q1, q2, q3 = solve_q123(r)
-                # Use IK stance as zero, so stance offset is exactly 0.
-                self.ref_dof_pos[:, hip_idx] = q1 - q1_0
-                self.ref_dof_pos[:, knee_idx] = q2 - q2_0
-                self.ref_dof_pos[:, ankle_idx] = q3 - q3_0
-
-            solve_leg(
-                sin_pos_l,
-                self.left_ref_joint_indices[0],
-                self.left_ref_joint_indices[1],
-                self.left_ref_joint_indices[2],
-            )
-            solve_leg(
-                sin_pos_r,
-                self.right_ref_joint_indices[0],
-                self.right_ref_joint_indices[1],
-                self.right_ref_joint_indices[2],
-            )
-            # Optional global sign flips for hardware axis conventions.
-            self.ref_dof_pos[:, self.left_ref_joint_indices[0]] *= (left_sign * l_hip_s)
-            self.ref_dof_pos[:, self.left_ref_joint_indices[1]] *= (left_sign * l_knee_s)
-            self.ref_dof_pos[:, self.left_ref_joint_indices[2]] *= (left_sign * l_ankle_s)
-            self.ref_dof_pos[:, self.right_ref_joint_indices[0]] *= (right_sign * r_hip_s)
-            self.ref_dof_pos[:, self.right_ref_joint_indices[1]] *= (right_sign * r_knee_s)
-            self.ref_dof_pos[:, self.right_ref_joint_indices[2]] *= (right_sign * r_ankle_s)
-            self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
-        else:
-            scale_1 = self.cfg.rewards.target_joint_pos_scale
-            scale_2 = 2 * scale_1
-            # left foot stance phase set to default joint pos
-            sin_pos_l[sin_pos_l > 0] = 0
-            self.ref_dof_pos[:, self.left_ref_joint_indices[0]] = (left_sign * l_hip_s) * sin_pos_l * scale_1
-            self.ref_dof_pos[:, self.left_ref_joint_indices[1]] = (left_sign * l_knee_s) * sin_pos_l * scale_2
-            self.ref_dof_pos[:, self.left_ref_joint_indices[2]] = (left_sign * l_ankle_s) * sin_pos_l * scale_1
-            # right foot stance phase set to default joint pos
-            sin_pos_r[sin_pos_r < 0] = 0
-            self.ref_dof_pos[:, self.right_ref_joint_indices[0]] = (right_sign * r_hip_s) * sin_pos_r * scale_1
-            self.ref_dof_pos[:, self.right_ref_joint_indices[1]] = (right_sign * r_knee_s) * sin_pos_r * scale_2
-            self.ref_dof_pos[:, self.right_ref_joint_indices[2]] = (right_sign * r_ankle_s) * sin_pos_r * scale_1
-            # Double support phase
-            self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
+        # left foot stance phase set to default joint pos
+        sin_pos_l[sin_pos_l > 0] = 0
+        self.ref_dof_pos[:, self.left_ref_joint_indices[0]] = left_sign * sin_pos_l * scale_1
+        self.ref_dof_pos[:, self.left_ref_joint_indices[1]] = left_sign * sin_pos_l * scale_2
+        self.ref_dof_pos[:, self.left_ref_joint_indices[2]] = left_sign * sin_pos_l * scale_1
+        # right foot stance phase set to default joint pos
+        sin_pos_r[sin_pos_r < 0] = 0
+        self.ref_dof_pos[:, self.right_ref_joint_indices[0]] = right_sign * sin_pos_r * scale_1
+        self.ref_dof_pos[:, self.right_ref_joint_indices[1]] = right_sign * sin_pos_r * scale_2
+        self.ref_dof_pos[:, self.right_ref_joint_indices[2]] = right_sign * sin_pos_r * scale_1
+        # Double support phase
+        self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
         self.ref_action = 2 * self.ref_dof_pos
 

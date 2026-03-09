@@ -103,12 +103,6 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
     scale_2 = 2.0 * scale_1
     left_sign = float(getattr(cfg.rewards, "left_ref_sign", 1.0))
     right_sign = float(getattr(cfg.rewards, "right_ref_sign", 1.0))
-    l_hip_s = float(getattr(cfg.rewards, "left_hip_ref_sign", 1.0))
-    l_knee_s = float(getattr(cfg.rewards, "left_knee_ref_sign", 1.0))
-    l_ankle_s = float(getattr(cfg.rewards, "left_ankle_ref_sign", 1.0))
-    r_hip_s = float(getattr(cfg.rewards, "right_hip_ref_sign", 1.0))
-    r_knee_s = float(getattr(cfg.rewards, "right_knee_ref_sign", 1.0))
-    r_ankle_s = float(getattr(cfg.rewards, "right_ankle_ref_sign", 1.0))
 
     num_steps = int(seconds / dt)
     t = np.arange(num_steps, dtype=np.float32) * dt
@@ -119,65 +113,18 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
 
     ref_dof_pos = np.zeros((num_steps, len(dof_names)), dtype=np.float32)
 
-    use_ik = bool(getattr(cfg.rewards, "use_planar_leg_ik", False))
-    if use_ik:
-        l1 = float(getattr(cfg.rewards, "length_HipPitch_Knee", 0.07))
-        l2 = float(getattr(cfg.rewards, "length_Knee_Ankle", 0.07))
-        eps = 1e-6
-        leg_len = max(l1 + l2, eps)
-        z_lift = min(float(cfg.rewards.target_feet_height), 0.35 * leg_len)
-        r_stance = min(leg_len - 0.01, leg_len - eps)
-        r_stance = max(r_stance, abs(l1 - l2) + 0.01)
+    sin_pos_l[sin_pos_l > 0.0] = 0.0
+    ref_dof_pos[:, lh] = left_sign * sin_pos_l * scale_1
+    ref_dof_pos[:, lk] = left_sign * sin_pos_l * scale_2
+    ref_dof_pos[:, la] = left_sign * sin_pos_l * scale_1
 
-        sin_pos_l[sin_pos_l > 0.0] = 0.0
-        sin_pos_r[sin_pos_r < 0.0] = 0.0
+    sin_pos_r[sin_pos_r < 0.0] = 0.0
+    ref_dof_pos[:, rh] = right_sign * sin_pos_r * scale_1
+    ref_dof_pos[:, rk] = right_sign * sin_pos_r * scale_2
+    ref_dof_pos[:, ra] = right_sign * sin_pos_r * scale_1
 
-        def solve_q123(r):
-            x = np.zeros_like(r)
-            z = -r
-            r2 = x * x + z * z
-            cos_q2 = (r2 - l1 * l1 - l2 * l2) / (2.0 * l1 * l2)
-            cos_q2 = np.clip(cos_q2, -1.0, 1.0)
-            q2 = np.arccos(cos_q2)
-            q1 = np.arctan2(z, x) - np.arctan2(l2 * np.sin(q2), l1 + l2 * np.cos(q2))
-            q3 = -(q1 + q2)
-            return q1, q2, q3
-
-        q1_0, q2_0, q3_0 = solve_q123(np.full_like(sin_pos, r_stance))
-
-        def solve_leg(raw_wave, hip_idx, knee_idx, ankle_idx, leg_sign):
-            swing = np.abs(raw_wave)
-            r = r_stance - z_lift * swing
-            r = np.clip(r, abs(l1 - l2) + eps, (l1 + l2) - eps)
-            q1, q2, q3 = solve_q123(r)
-            ref_dof_pos[:, hip_idx] = leg_sign * (q1 - q1_0)
-            ref_dof_pos[:, knee_idx] = leg_sign * (q2 - q2_0)
-            ref_dof_pos[:, ankle_idx] = leg_sign * (q3 - q3_0)
-
-        solve_leg(sin_pos_l, lh, lk, la, left_sign)
-        solve_leg(sin_pos_r, rh, rk, ra, right_sign)
-        ref_dof_pos[:, lh] *= l_hip_s
-        ref_dof_pos[:, lk] *= l_knee_s
-        ref_dof_pos[:, la] *= l_ankle_s
-        ref_dof_pos[:, rh] *= r_hip_s
-        ref_dof_pos[:, rk] *= r_knee_s
-        ref_dof_pos[:, ra] *= r_ankle_s
-        ds_mask = np.abs(sin_pos) < 0.1
-        ref_dof_pos[ds_mask, :] = 0.0
-    else:
-        # Legacy sinusoidal joint-offset method.
-        sin_pos_l[sin_pos_l > 0.0] = 0.0
-        ref_dof_pos[:, lh] = (left_sign * l_hip_s) * sin_pos_l * scale_1
-        ref_dof_pos[:, lk] = (left_sign * l_knee_s) * sin_pos_l * scale_2
-        ref_dof_pos[:, la] = (left_sign * l_ankle_s) * sin_pos_l * scale_1
-
-        sin_pos_r[sin_pos_r < 0.0] = 0.0
-        ref_dof_pos[:, rh] = (right_sign * r_hip_s) * sin_pos_r * scale_1
-        ref_dof_pos[:, rk] = (right_sign * r_knee_s) * sin_pos_r * scale_2
-        ref_dof_pos[:, ra] = (right_sign * r_ankle_s) * sin_pos_r * scale_1
-
-        ds_mask = np.abs(sin_pos) < 0.1
-        ref_dof_pos[ds_mask, :] = 0.0
+    ds_mask = np.abs(sin_pos) < 0.1
+    ref_dof_pos[ds_mask, :] = 0.0
 
     ref_action = 2.0 * ref_dof_pos
     action_scale = float(cfg.control.action_scale)
@@ -198,12 +145,6 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
         "action_scale": action_scale,
         "left_ref_sign": left_sign,
         "right_ref_sign": right_sign,
-        "left_hip_ref_sign": l_hip_s,
-        "left_knee_ref_sign": l_knee_s,
-        "left_ankle_ref_sign": l_ankle_s,
-        "right_hip_ref_sign": r_hip_s,
-        "right_knee_ref_sign": r_knee_s,
-        "right_ankle_ref_sign": r_ankle_s,
     }
 
 

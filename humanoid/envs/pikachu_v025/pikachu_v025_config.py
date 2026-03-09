@@ -101,27 +101,27 @@ class PikachuCfg(LeggedRobotCfg):
         pos = [0.0, 0.0, 0.15]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-        #    'left_hip_yaw_joint' : 0. ,   
-        #    'left_hip_roll_joint' : 0,               
-        #    'left_hip_pitch_joint' : 0.3,         
-        #    'left_knee_joint' : 1.12,       
-        #    'left_ankle_joint' : 0.8,     
-        #    'right_hip_yaw_joint' : 0., 
-        #    'right_hip_roll_joint' : 0, 
-        #    'right_hip_pitch_joint' : 0.3,                                       
-        #    'right_knee_joint' : 1.12,                                             
-        #    'right_ankle_joint' : 0.8,   
-
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : 0,         
-           'left_knee_joint' : 0,       
-           'left_ankle_joint' : 0,     
+           'left_hip_pitch_joint' : 0.3,         
+           'left_knee_joint' : 1.12,       
+           'left_ankle_joint' : 0.8,     
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 0,                                       
-           'right_knee_joint' : 0,                                             
-           'right_ankle_joint' : 0,   
+           'right_hip_pitch_joint' : 0.3,                                       
+           'right_knee_joint' : 1.12,                                             
+           'right_ankle_joint' : 0.8,   
+
+        #    'left_hip_yaw_joint' : 0. ,   
+        #    'left_hip_roll_joint' : 0,               
+        #    'left_hip_pitch_joint' : 0,         
+        #    'left_knee_joint' : 0,       
+        #    'left_ankle_joint' : 0,     
+        #    'right_hip_yaw_joint' : 0., 
+        #    'right_hip_roll_joint' : 0, 
+        #    'right_hip_pitch_joint' : 0,                                       
+        #    'right_knee_joint' : 0,                                             
+        #    'right_ankle_joint' : 0,   
         }
 
     class control(LeggedRobotCfg.control):
@@ -195,27 +195,14 @@ class PikachuCfg(LeggedRobotCfg):
         min_dist = 0.1
         max_dist = 0.3
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.17    # rad
+        target_joint_pos_scale = 0.6   # rad
         target_feet_height = 0.08        # m
-        cycle_time = 0.64                # sec 0.64
+        cycle_time = 0.8                # sec 0.64
 
-        # Use planar leg IK to generate reference hip/knee/ankle trajectories.
-        use_planar_leg_ik = True
-        # Planar two-link leg lengths for IK [m].
-        length_HipPitch_Knee = 0.071
-        length_Knee_Ankle = 0.07
         # Reference sign for each leg in compute_ref_state.
         # Pikachu V025 left/right joint positive directions are aligned.
-        left_ref_sign = 1.0
+        left_ref_sign = -1.0
         right_ref_sign = 1.0
-        # Joint-wise signs for IK/sinusoidal reference mapping.
-        # Keep knee positive; hip/ankle opposite for this URDF axis convention.
-        left_hip_ref_sign = -1.0
-        left_knee_ref_sign = 1.0
-        left_ankle_ref_sign = -1.0
-        right_hip_ref_sign = -1.0
-        right_knee_ref_sign = 1.0
-        right_ankle_ref_sign = -1.0
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
