@@ -157,7 +157,7 @@ class PikachuCfg(LeggedRobotCfg):
         randomize_friction = True
         friction_range = [0.1, 2.0]
         randomize_base_mass = True
-        added_mass_range = [-0.2, 0.8]
+        added_mass_range = [-0.2, 0.2]
         push_robots = True
         push_interval_s = 4
         max_push_vel_xy = 0.2
@@ -191,7 +191,7 @@ class PikachuCfg(LeggedRobotCfg):
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
         tracking_sigma = 5
-        max_contact_force = 200  # Forces above this value are penalized
+        max_contact_force = 100  # Forces above this value are penalized
 
         class scales:
             # reference motion tracking
