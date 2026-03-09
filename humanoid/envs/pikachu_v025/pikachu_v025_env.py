@@ -175,7 +175,7 @@ class PikachuEnv(LeggedRobot):
         sin_pos_l = sin_pos.clone()
         sin_pos_r = sin_pos.clone()
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
-        scale_1 = self.cfg.rewards.target_joint_pos_scale
+        scale_1 = self.cfg.rewards.
         scale_2 = 2 * scale_1
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
@@ -396,14 +396,34 @@ class PikachuEnv(LeggedRobot):
         checking the first contact with the ground after being in the air. The air time is
         limited to a maximum value for reward calculation.
         """
+        # contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        # stance_mask = self._get_gait_phase()
+        # self.contact_filt = torch.logical_or(torch.logical_or(contact, stance_mask), self.last_contacts)
+        # self.last_contacts = contact
+        # first_contact = (self.feet_air_time > 0.) * self.contact_filt
+        # self.feet_air_time += self.dt
+        # air_time = self.feet_air_time.clamp(0, 0.5) * first_contact
+        # self.feet_air_time *= ~self.contact_filt
+        # return air_time.sum(dim=1)
+
+
+        # 真实接触（不再混入期望相位）
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
-        stance_mask = self._get_gait_phase()
-        self.contact_filt = torch.logical_or(torch.logical_or(contact, stance_mask), self.last_contacts)
-        self.last_contacts = contact
-        first_contact = (self.feet_air_time > 0.) * self.contact_filt
+
+        # 简单去抖：当前接触 or 上一帧接触
+        contact_filt = torch.logical_or(contact, self.last_contacts)
+
+        # 只在“从不接触 -> 接触”瞬间记 first_contact
+        first_contact = torch.logical_and(contact_filt, ~self.last_contacts)
+
         self.feet_air_time += self.dt
         air_time = self.feet_air_time.clamp(0, 0.5) * first_contact
-        self.feet_air_time *= ~self.contact_filt
+
+        # 接触后清零空中计时；离地继续累计
+        self.feet_air_time *= ~contact_filt
+
+        # 最后再更新上一帧接触
+        self.last_contacts = contact
         return air_time.sum(dim=1)
 
     def _reward_feet_contact_number(self):
