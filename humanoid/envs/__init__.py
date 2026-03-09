@@ -35,8 +35,16 @@ from .base.legged_robot import LeggedRobot
 
 from .custom.humanoid_config import XBotLCfg, XBotLCfgPPO
 from .custom.humanoid_env import XBotLFreeEnv
-
+from .pikachu.pikachu_config import PikachuCfg, PikachuCfgPPO
+from .pikachu.pikachu_env import PikachuEnv
+from .pikachu_v025.pikachu_v025_config import (
+    PikachuCfg as PikachuV025Cfg,
+    PikachuCfgPPO as PikachuV025CfgPPO,
+)
+from .pikachu_v025.pikachu_v025_env import PikachuEnv as PikachuV025Env
 from humanoid.utils.task_registry import task_registry
 
 
 task_registry.register( "humanoid_ppo", XBotLFreeEnv, XBotLCfg(), XBotLCfgPPO() )
+task_registry.register( "Pikachu_V01", PikachuEnv, PikachuCfg(), PikachuCfgPPO() )
+task_registry.register( "Pikachu_V025", PikachuV025Env, PikachuV025Cfg(), PikachuV025CfgPPO() )

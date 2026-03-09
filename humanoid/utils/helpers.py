@@ -107,6 +107,16 @@ def parse_sim_params(args, cfg):
     return sim_params
 
 
+def launch_tensorboard(directory_path):
+    from tensorboard import program
+
+    # learning visualizer
+    tb = program.TensorBoard()
+    tb.configure(argv=[None, "--logdir", directory_path, "--bind_all", "--port", "1230"])
+    url = tb.launch()
+    print("[info] Tensorboard session created: " + url)
+
+
 def get_load_path(root, load_run=-1, checkpoint=-1):
     def month_to_number(month):
         return datetime.datetime.strptime(month, "%b").month
@@ -230,6 +240,11 @@ def get_args():
             "name": "--max_iterations",
             "type": int,
             "help": "Maximum number of training iterations. Overrides config file if provided.",
+        },
+        {   "name": "--launch_tensorboard",
+            "action": "store_true",
+            "default": False,
+            "help": "launch tensorboard backend"
         },
     ]
     # parse arguments

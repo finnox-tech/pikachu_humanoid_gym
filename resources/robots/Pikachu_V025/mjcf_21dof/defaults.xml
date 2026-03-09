@@ -1,0 +1,53 @@
+<!-- defaults.xml -->
+<mujoco>
+    <!-- 皮卡丘主类 -->
+    <default>
+       <default class="pikachu_v025">
+            <geom rgba="1 1 0 1" friction="0.4" margin="0.001" condim="1"/>  <!-- 黄色 中等摩擦 扩展碰撞边界 碰撞维度 -->
+            <joint  limited="true"/>       <!-- 阻抗系数 转子惯量 静摩擦损失 -->
+
+
+            <!-- 腿部类 -->
+            <default class="leg">
+
+                <default class="hip_pitch">
+                    <!-- 4310    armature 转子惯量！！！-->
+                    <joint range="0 2.44"
+                            damping="0.4" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="hip_roll">
+                    <!-- 3507*3 -->
+                    <joint range="-0.09 0.26"
+                           damping="0.15" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="hip_yaw">
+                    <!-- 3507*3 -->
+                    <joint  range="-0.09 0.26"
+                            damping="0.15" armature="0.00" frictionloss="0.01"/>
+
+                </default>
+
+                <default class="knee">
+                    <!-- 4310 -->
+                    <joint  range="0 1.57" 
+                            damping="0.4" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="ankle">
+                    <!-- 3507*3 -->
+                    <joint  range="-0.52 1.05"
+                            damping="0.15" armature="0.00" frictionloss="0.01"/>
+                </default>
+            </default>
+            
+            <!-- 视觉类 -->
+            <default class="visual">
+            <geom contype="0" conaffinity="0" group="2"/>
+            </default>
+
+        </default>
+    </default>
+
+</mujoco>

@@ -1,0 +1,37 @@
+<!-- motors.xml -->
+<mujoco>
+    <default>
+        <default class="motors">
+            <default class="DM-motors">
+                
+                <default class="DM-J4310P-2EC-V1.1">
+                    <motor ctrllimited="true" ctrlrange="-12.5 12.5"/>  
+                     <!--  joint属性并未生效,需在default中定义  -->
+                    <joint 
+                            damping="0.1" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="DM-J4340P-2EC">
+                    <motor ctrllimited="true" ctrlrange="-27 27"/>  
+                    <joint 
+                            damping="0.4" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="DM-J3507-2EC">
+                    <motor ctrllimited="true" ctrlrange="-3 3"/> 
+                    <joint 
+                            damping="0.05" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+                <default class="DM-J3507-2EC-3R">
+                    <motor ctrllimited="true" ctrlrange="-9 9"/> 
+                    <joint 
+                            damping="0.15" armature="0.00" frictionloss="0.01"/>
+                </default>
+
+            </default>
+        </default>
+    </default>
+
+
+</mujoco>

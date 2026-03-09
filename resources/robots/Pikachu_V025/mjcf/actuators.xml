@@ -1,0 +1,17 @@
+<!-- actuators.xml -->
+<mujoco>
+    <actuator>
+
+        <motor class="DM-J4310P-2EC-V1.1"  name="act_Lhip_pitch" joint="left_hip_pitch_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Lhip_roll" joint="left_hip_roll_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Lhip_yaw" joint="left_hip_yaw_joint"/>
+        <motor class="DM-J4310P-2EC-V1.1"   name="act_Lknee" joint="left_knee_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Lankle" joint="left_ankle_joint"/>
+        
+        <motor class="DM-J4310P-2EC-V1.1"   name="act_Rhip_pitch" joint="right_hip_pitch_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Rhip_roll" joint="right_hip_roll_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Rhip_yaw" joint="right_hip_yaw_joint"/>
+        <motor class="DM-J4310P-2EC-V1.1"   name="act_Rknee" joint="right_knee_joint"/>
+        <motor class="DM-J3507-2EC-3R" name="act_Rankle" joint="right_ankle_joint"/>
+    </actuator>
+</mujoco>
