@@ -175,7 +175,7 @@ class PikachuEnv(LeggedRobot):
         sin_pos_l = sin_pos.clone()
         sin_pos_r = sin_pos.clone()
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
-        scale_1 = self.cfg.rewards.
+        scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
