@@ -262,7 +262,7 @@ class PikachuEnv(LeggedRobot):
         cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
 
         stance_mask = self._get_gait_phase()
-        contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.
+        contact_mask = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
 
         self.command_input = torch.cat(
             (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
@@ -338,6 +338,29 @@ class PikachuEnv(LeggedRobot):
         contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
         # print(contact_force)
 
+        stance_mask = self._get_gait_phase()
+        contact_mask = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
+        # print(stance_mask)
+        # print(contact_mask)
+        reward = torch.where(contact_mask == stance_mask, 1.0, -0.3)
+        # print(torch.mean(reward, dim=1))
+
+
+        # Compute feet contact mask
+        contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
+        # Get the z-position of the feet and compute the change in z-position
+        feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
+        delta_z = feet_z - self.last_feet_z
+        self.feet_height += delta_z
+        self.last_feet_z = feet_z
+        # Compute swing mask
+        swing_mask = 1 - self._get_gait_phase()
+        # feet height should be closed to target feet height at the peak
+        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
+        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        self.feet_height *= ~contact
+        # return rew_pos
+        # print(self.feet_height)
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
@@ -390,7 +413,7 @@ class PikachuEnv(LeggedRobot):
         and the speed of the feet. A contact threshold is used to determine if the foot is in contact 
         with the ground. The speed of the foot is calculated and scaled by the contact condition.
         """
-        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        contact = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
         foot_speed_norm = torch.norm(self.rigid_state[:, self.feet_indices, 7:9], dim=2)
         rew = torch.sqrt(foot_speed_norm)
         rew *= contact
@@ -402,7 +425,7 @@ class PikachuEnv(LeggedRobot):
         checking the first contact with the ground after being in the air. The air time is
         limited to a maximum value for reward calculation.
         """
-        # contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        # contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
         # stance_mask = self._get_gait_phase()
         # self.contact_filt = torch.logical_or(torch.logical_or(contact, stance_mask), self.last_contacts)
         # self.last_contacts = contact
@@ -414,7 +437,7 @@ class PikachuEnv(LeggedRobot):
 
 
         # 真实接触（不再混入期望相位）
-        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
 
         # 简单去抖：当前接触 or 上一帧接触
         contact_filt = torch.logical_or(contact, self.last_contacts)
@@ -437,7 +460,7 @@ class PikachuEnv(LeggedRobot):
         Calculates a reward based on the number of feet contacts aligning with the gait phase. 
         Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
         """
-        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
         stance_mask = self._get_gait_phase()
         reward = torch.where(contact == stance_mask, 1.0, -0.3)
         return torch.mean(reward, dim=1)
@@ -547,8 +570,8 @@ class PikachuEnv(LeggedRobot):
         Calculates reward based on the clearance of the swing leg from the ground during movement.
         Encourages appropriate lift of the feet during the swing phase of the gait.
         """
-      # Compute feet contact mask
-        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        # Compute feet contact mask
+        contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
 
         # Get the z-position of the feet and compute the change in z-position
         feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
@@ -566,7 +589,7 @@ class PikachuEnv(LeggedRobot):
         return rew_pos
 
         # # Compute feet contact mask
-        # contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        # contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
 
         # # Get the z-position of the feet and compute the change in z-position
         # feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05

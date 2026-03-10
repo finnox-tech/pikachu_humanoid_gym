@@ -47,6 +47,7 @@ class PikachuCfg(LeggedRobotCfg):
         num_envs = 4096
         episode_length_s = 24     # episode length in seconds
         use_ref_actions = False   # speed up training by using reference actions
+        foot_contact_force=3.0  # contact force threshold for foot-ground contact
 
     class safety:
         # safety factors
@@ -212,11 +213,11 @@ class PikachuCfg(LeggedRobotCfg):
         class scales:
             # reference motion tracking
             joint_pos = 5
-            feet_clearance = 1.
-            feet_contact_number = 1.2
+            feet_clearance = 2
+            feet_contact_number = 2
             # gait
             feet_air_time = 1.5
-            foot_slip = -0.1
+            foot_slip = -0.2
             feet_distance = 0.2
             knee_distance = 0.2
             # contact
