@@ -177,18 +177,16 @@ class PikachuEnv(LeggedRobot):
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
-        left_sign = float(getattr(self.cfg.rewards, "left_ref_sign", 1.0))
-        right_sign = float(getattr(self.cfg.rewards, "right_ref_sign", 1.0))
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, self.left_ref_joint_indices[0]] = left_sign * sin_pos_l * scale_1
-        self.ref_dof_pos[:, self.left_ref_joint_indices[1]] = left_sign * sin_pos_l * scale_2
-        self.ref_dof_pos[:, self.left_ref_joint_indices[2]] = left_sign * sin_pos_l * scale_1
+        self.ref_dof_pos[:, self.left_ref_joint_indices[0]] =  sin_pos_l * scale_1
+        self.ref_dof_pos[:, self.left_ref_joint_indices[1]] =  sin_pos_l * scale_2
+        self.ref_dof_pos[:, self.left_ref_joint_indices[2]] =  sin_pos_l * scale_1
         # right foot stance phase set to default joint pos
         sin_pos_r[sin_pos_r < 0] = 0
-        self.ref_dof_pos[:, self.right_ref_joint_indices[0]] = right_sign * sin_pos_r * scale_1
-        self.ref_dof_pos[:, self.right_ref_joint_indices[1]] = right_sign * sin_pos_r * scale_2
-        self.ref_dof_pos[:, self.right_ref_joint_indices[2]] = right_sign * sin_pos_r * scale_1
+        self.ref_dof_pos[:, self.right_ref_joint_indices[0]] =  sin_pos_r * scale_1
+        self.ref_dof_pos[:, self.right_ref_joint_indices[1]] =  sin_pos_r * scale_2
+        self.ref_dof_pos[:, self.right_ref_joint_indices[2]] =  sin_pos_r * scale_1
         # Double support phase
         self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
@@ -543,7 +541,7 @@ class PikachuEnv(LeggedRobot):
         Calculates reward based on the clearance of the swing leg from the ground during movement.
         Encourages appropriate lift of the feet during the swing phase of the gait.
         """
-        # Compute feet contact mask
+      # Compute feet contact mask
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
 
         # Get the z-position of the feet and compute the change in z-position
@@ -555,12 +553,30 @@ class PikachuEnv(LeggedRobot):
         # Compute swing mask
         swing_mask = 1 - self._get_gait_phase()
 
-        # Continuous reward around target clearance (more stable than hard threshold).
-        height_err = self.feet_height - self.cfg.rewards.target_feet_height
-        rew_pos = torch.exp(-40.0 * torch.square(height_err))
+        # feet height should be closed to target feet height at the peak
+        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
         rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
         self.feet_height *= ~contact
         return rew_pos
+
+        # # Compute feet contact mask
+        # contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+
+        # # Get the z-position of the feet and compute the change in z-position
+        # feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
+        # delta_z = feet_z - self.last_feet_z
+        # self.feet_height += delta_z
+        # self.last_feet_z = feet_z
+
+        # # Compute swing mask
+        # swing_mask = 1 - self._get_gait_phase()
+
+        # # Continuous reward around target clearance (more stable than hard threshold).
+        # height_err = self.feet_height - self.cfg.rewards.target_feet_height
+        # rew_pos = torch.exp(-40.0 * torch.square(height_err))
+        # rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        # self.feet_height *= ~contact
+        # return rew_pos
 
     def _reward_low_speed(self):
         """
