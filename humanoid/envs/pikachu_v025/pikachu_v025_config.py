@@ -212,9 +212,9 @@ class PikachuCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 5
+            joint_pos = 4
             # 抬脚高度奖励
-            feet_clearance = 2
+            feet_clearance = 3
             # 每只脚接触顺序
             feet_contact_number = 2
             
@@ -227,7 +227,7 @@ class PikachuCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 2
+            tracking_lin_vel = 1.5
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
