@@ -46,7 +46,7 @@ class PikachuCfg(LeggedRobotCfg):
         num_actions = 10
         num_envs = 4096
         episode_length_s = 24     # episode length in seconds
-        use_ref_actions = False   # speed up training by using reference actions
+        use_ref_actions = True   # speed up training by using reference actions
 
     class safety:
         # safety factors
