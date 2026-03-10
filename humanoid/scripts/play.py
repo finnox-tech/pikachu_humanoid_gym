@@ -65,6 +65,10 @@ def play(args):
 
     train_cfg.seed = 123145
     print("train_cfg.runner_class_name:", train_cfg.runner_class_name)
+    if not FIX_COMMAND:
+        env_cfg.env.get_commands_from_keyboard = True
+    else:
+        env_cfg.env.get_commands_from_keyboard = False
 
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
@@ -183,6 +187,6 @@ def play(args):
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RENDER = False
-    FIX_COMMAND = True
+    FIX_COMMAND = False
     args = get_args()
     play(args)

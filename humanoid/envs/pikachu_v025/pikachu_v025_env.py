@@ -37,6 +37,8 @@ import torch
 from humanoid.envs import LeggedRobot
 
 from humanoid.utils.terrain import  HumanoidTerrain
+import pygame
+from humanoid.utils.math import wrap_to_pi
 
 
 class PikachuEnv(LeggedRobot):
@@ -254,8 +256,44 @@ class PikachuEnv(LeggedRobot):
 
     def compute_observations(self):
 
+        if self._get_commands_from_keyboard:
+            keys = pygame.key.get_pressed()
+            lin_vel_x = 0
+            lin_vel_y = 0
+            ang_vel = 0
+            command_scale=0.75
+            if keys[pygame.K_w]:
+                lin_vel_x = torch.tensor(self.command_ranges["lin_vel_x"][1])
+            elif keys[pygame.K_s]:
+                lin_vel_x = torch.tensor(self.command_ranges["lin_vel_x"][0])
+            
+            if keys[pygame.K_d]:
+                lin_vel_y = torch.tensor(self.command_ranges["lin_vel_y"][0])
+            elif keys[pygame.K_a]:
+                lin_vel_y = torch.tensor(self.command_ranges["lin_vel_y"][1])
+            
+            # if keys[pygame.K_q]:
+            #     ang_vel = torch.tensor(self.command_ranges["ang_vel_yaw"][1])
+            # elif keys[pygame.K_e]:
+            #     ang_vel = torch.tensor(self.command_ranges["ang_vel_yaw"][0])
 
+            forward = quat_apply(self.base_quat, self.forward_vec)
+            current_heading = torch.atan2(forward[:, 1], forward[:, 0])
+            
+            if keys[pygame.K_q]:
+                self.heading_target += 0.01
+            elif keys[pygame.K_e]:
+                self.heading_target -= 0.01
+            
+            self.heading_target = wrap_to_pi(self.heading_target)
 
+            self.commands[:, 0] = lin_vel_x*command_scale
+            self.commands[:, 1] = lin_vel_y*command_scale
+            self.commands[:, 2] = 0 # ang_vel*command_scale
+            self.commands[:, 3] = self.heading_target
+            
+            print(self.commands[0])
+            pygame.event.pump()  # process event queue
 
         phase = self._get_phase()
         self.compute_ref_state()

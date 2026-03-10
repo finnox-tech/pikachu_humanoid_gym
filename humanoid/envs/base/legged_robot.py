@@ -38,6 +38,7 @@ from isaacgym import gymtorch, gymapi, gymutil
 from collections import deque
 
 import torch
+import pygame
 
 from humanoid import LEGGED_GYM_ROOT_DIR
 from humanoid.envs.base.base_task import BaseTask
@@ -80,6 +81,15 @@ class LeggedRobot(BaseTask):
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
+
+        self.heading_target=0
+        self._get_commands_from_keyboard = self.cfg.env.get_commands_from_keyboard
+        if self._get_commands_from_keyboard:
+            pygame.init()
+            # open a blank pygame window
+            self._screen = pygame.display.set_mode((100, 100))
+            pygame.display.set_caption("Press arrow keys to move robot")
+
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()

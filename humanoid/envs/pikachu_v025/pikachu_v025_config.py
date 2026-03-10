@@ -49,6 +49,8 @@ class PikachuCfg(LeggedRobotCfg):
         use_ref_actions = False   # speed up training by using reference actions
         foot_contact_force=3.0  # contact force threshold for foot-ground contact
 
+        get_commands_from_keyboard = False
+
     class safety:
         # safety factors
         pos_limit = 1.0
@@ -233,7 +235,7 @@ class PikachuCfg(LeggedRobotCfg):
             low_speed = 0.2
             track_vel_hard = 0.5
             # base pos
-            default_joint_pos = 0.1
+            default_joint_pos = 0.05
             orientation = 1.
             base_height = 0.2
             base_acc = 0.2
