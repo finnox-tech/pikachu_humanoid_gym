@@ -261,7 +261,7 @@ class PikachuEnv(LeggedRobot):
             lin_vel_x = 0
             lin_vel_y = 0
             ang_vel = 0
-            command_scale=0.5
+            command_scale=1
             if keys[pygame.K_w]:
                 lin_vel_x = torch.tensor(self.command_ranges["lin_vel_x"][1])
             elif keys[pygame.K_s]:
@@ -409,6 +409,20 @@ class PikachuEnv(LeggedRobot):
             rew = torch.sqrt(foot_speed_norm)
             rew *= contact
             # print(rew)
+
+            joint_diff = self.dof_pos - self.default_joint_pd_target
+            left_yaw_roll = joint_diff[:, list(self.left_yaw_roll_indices)]
+            right_yaw_roll = joint_diff[:, list(self.right_yaw_roll_indices)]
+            yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
+            # yaw_roll = torch.norm(right_yaw_roll, dim=1)
+
+            yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+            # rew = torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+            # print(left_yaw_roll)
+            # print(right_yaw_roll)
+            # print(yaw_roll)
+            # print(list(self.left_yaw_roll_indices), list(self.right_yaw_roll_indices))
+            print(self.default_joint_pd_target)
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
