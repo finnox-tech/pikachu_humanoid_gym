@@ -357,56 +357,58 @@ class PikachuEnv(LeggedRobot):
         self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)  # N, T*K
         self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
 # ================================================ Debugs ================================================== #
-        measured_heights = torch.sum(
-            self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
-        base_height = self.root_states[:, 2] - (measured_heights - 0.05)
-        # print(base_height)
+        if self._debug:
 
-        foot_pos = self.rigid_state[:, self.feet_indices, :2]
-        foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-        # print(foot_dist)
+            measured_heights = torch.sum(
+                self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
+            base_height = self.root_states[:, 2] - (measured_heights - 0.05)
+            # print(base_height)
 
-        feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
-        delta_z = feet_z - self.last_feet_z
-        self.feet_height += delta_z
-        # print(self.feet_height)
+            foot_pos = self.rigid_state[:, self.feet_indices, :2]
+            foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
+            # print(foot_dist)
 
-        foot_pos = self.rigid_state[:, self.knee_indices, :2]
-        foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-        # print(foot_dist)
+            feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
+            delta_z = feet_z - self.last_feet_z
+            self.feet_height += delta_z
+            # print(self.feet_height)
 
-        contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
-        # print(contact_force)
+            foot_pos = self.rigid_state[:, self.knee_indices, :2]
+            foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
+            # print(foot_dist)
 
-        stance_mask = self._get_gait_phase()
-        contact_mask = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
-        # print(stance_mask)
-        # print(contact_mask)
-        reward = torch.where(contact_mask == stance_mask, 1.0, -0.3)
-        # print(torch.mean(reward, dim=1))
+            contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
+            # print(contact_force)
+
+            stance_mask = self._get_gait_phase()
+            contact_mask = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
+            # print(stance_mask)
+            # print(contact_mask)
+            reward = torch.where(contact_mask == stance_mask, 1.0, -0.3)
+            # print(torch.mean(reward, dim=1))
 
 
-        # Compute feet contact mask
-        contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
-        # Get the z-position of the feet and compute the change in z-position
-        feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
-        delta_z = feet_z - self.last_feet_z
-        self.feet_height += delta_z
-        self.last_feet_z = feet_z
-        # Compute swing mask
-        swing_mask = 1 - self._get_gait_phase()
-        # feet height should be closed to target feet height at the peak
-        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
-        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
-        self.feet_height *= ~contact
-        # return rew_pos
-        # print(self.feet_height)
+            # Compute feet contact mask
+            contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
+            # Get the z-position of the feet and compute the change in z-position
+            feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
+            delta_z = feet_z - self.last_feet_z
+            self.feet_height += delta_z
+            self.last_feet_z = feet_z
+            # Compute swing mask
+            swing_mask = 1 - self._get_gait_phase()
+            # feet height should be closed to target feet height at the peak
+            rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
+            rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+            self.feet_height *= ~contact
+            # return rew_pos
+            # print(self.feet_height)
 
-        contact = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
-        foot_speed_norm = torch.norm(self.rigid_state[:, self.feet_indices, 7:9], dim=2)
-        rew = torch.sqrt(foot_speed_norm)
-        rew *= contact
-        print(rew)
+            contact = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
+            foot_speed_norm = torch.norm(self.rigid_state[:, self.feet_indices, 7:9], dim=2)
+            rew = torch.sqrt(foot_speed_norm)
+            rew *= contact
+            # print(rew)
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):

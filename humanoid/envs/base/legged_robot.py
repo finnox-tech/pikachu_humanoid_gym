@@ -84,6 +84,7 @@ class LeggedRobot(BaseTask):
 
         self.heading_target=0
         self._get_commands_from_keyboard = self.cfg.env.get_commands_from_keyboard
+        self._debug = self.cfg.env.debug
         if self._get_commands_from_keyboard:
             pygame.init()
             # open a blank pygame window

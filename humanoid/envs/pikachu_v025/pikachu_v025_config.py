@@ -50,7 +50,7 @@ class PikachuCfg(LeggedRobotCfg):
         foot_contact_force=3.0  # contact force threshold for foot-ground contact
 
         get_commands_from_keyboard = False
-
+        debug = False
     class safety:
         # safety factors
         pos_limit = 1.0

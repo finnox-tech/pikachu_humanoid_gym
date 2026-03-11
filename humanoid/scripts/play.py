@@ -69,6 +69,8 @@ def play(args):
         env_cfg.env.get_commands_from_keyboard = True
     else:
         env_cfg.env.get_commands_from_keyboard = False
+    
+    env_cfg.env.debug = True
 
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
