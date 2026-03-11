@@ -422,7 +422,13 @@ class PikachuEnv(LeggedRobot):
             # print(right_yaw_roll)
             # print(yaw_roll)
             # print(list(self.left_yaw_roll_indices), list(self.right_yaw_roll_indices))
-            print(self.default_joint_pd_target)
+            # print(self.default_joint_pd_target)
+
+            left_error = torch.mean(torch.abs(joint_diff[:, self.left_yaw_roll_indices]))
+            right_error = torch.mean(torch.abs(joint_diff[:, self.right_yaw_roll_indices]))
+
+            print("left:", left_error.item())
+            print("right:", right_error.item())
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
@@ -554,6 +560,28 @@ class PikachuEnv(LeggedRobot):
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
         return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+
+    def _reward_default_joint_pos_left(self):
+        """
+        Calculates the reward for keeping joint positions close to default positions, with a focus 
+        on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
+        """
+        joint_diff = self.dof_pos - self.default_joint_pd_target
+        left_yaw_roll = joint_diff[:, list(self.left_yaw_roll_indices)]
+        yaw_roll = torch.norm(left_yaw_roll, dim=1)
+        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+        return torch.exp(-yaw_roll * 100)- 0.01 * torch.norm(joint_diff, dim=1)
+
+    def _reward_default_joint_pos_right(self):
+        """
+        Calculates the reward for keeping joint positions close to default positions, with a focus 
+        on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
+        """
+        joint_diff = self.dof_pos - self.default_joint_pd_target
+        right_yaw_roll = joint_diff[:, list(self.right_yaw_roll_indices)]
+        yaw_roll = torch.norm(right_yaw_roll, dim=1)
+        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+        return torch.exp(-yaw_roll * 100)- 0.01 * torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):
         """

@@ -235,7 +235,10 @@ class PikachuCfg(LeggedRobotCfg):
             low_speed = 0.2 #0.2
             track_vel_hard = 0.5 #0.5
             # base pos
-            default_joint_pos = 0.3
+            # default_joint_pos = 0.1
+            default_joint_pos_left = 0.2
+            default_joint_pos_right = 0.2
+
             orientation = 1.2
             base_height = 0.2
             base_acc = 0.2
