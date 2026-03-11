@@ -375,10 +375,10 @@ class PikachuEnv(LeggedRobot):
 
             foot_pos = self.rigid_state[:, self.knee_indices, :2]
             foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-            # print(foot_dist)
+            print(foot_dist)
 
             contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
-            print(contact_force)
+            # print(contact_force)
 
             stance_mask = self._get_gait_phase()
             contact_mask = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
@@ -779,3 +779,8 @@ class PikachuEnv(LeggedRobot):
         contact_feet_vel = self.feet_vel * contact.unsqueeze(-1)
         penalize = torch.square(contact_feet_vel[:, :, :3])
         return torch.sum(penalize, dim=(1,2))
+
+    def _reward_stand_still(self):
+        """ 惩罚零命令时的运动 """
+        # 当命令很小时，惩罚关节位置偏离默认位置
+        return torch.sum(torch.abs(self.dof_pos - self.default_joint_pd_target), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
