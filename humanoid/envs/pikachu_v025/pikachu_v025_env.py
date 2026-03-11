@@ -378,7 +378,7 @@ class PikachuEnv(LeggedRobot):
             # print(foot_dist)
 
             contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
-            # print(contact_force)
+            print(contact_force)
 
             stance_mask = self._get_gait_phase()
             contact_mask = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
@@ -427,8 +427,8 @@ class PikachuEnv(LeggedRobot):
             left_error = torch.mean(torch.abs(joint_diff[:, self.left_yaw_roll_indices]))
             right_error = torch.mean(torch.abs(joint_diff[:, self.right_yaw_roll_indices]))
 
-            print("left:", left_error.item())
-            print("right:", right_error.item())
+            # print("left:", left_error.item())
+            # print("right:", right_error.item())
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
@@ -769,3 +769,13 @@ class PikachuEnv(LeggedRobot):
             self.actions + self.last_last_actions - 2 * self.last_actions), dim=1)
         term_3 = 0.05 * torch.sum(torch.abs(self.actions), dim=1)
         return term_1 + term_2 + term_3
+
+    def _reward_contact_no_vel(self):
+        # Penalize contact with no velocity
+        self.feet_state = self.rigid_state[:, self.feet_indices, :]
+        self.feet_pos = self.feet_state[:, :, :3]
+        self.feet_vel = self.feet_state[:, :, 7:10]
+        contact = torch.norm(self.contact_forces[:, self.feet_indices, :3], dim=2) > 1.
+        contact_feet_vel = self.feet_vel * contact.unsqueeze(-1)
+        penalize = torch.square(contact_feet_vel[:, :, :3])
+        return torch.sum(penalize, dim=(1,2))
