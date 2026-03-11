@@ -199,7 +199,7 @@ class PikachuCfg(LeggedRobotCfg):
         max_dist = 0.3
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.2   # rad
-        target_feet_height = 0.025        # m
+        target_feet_height = 0.02        # m
         cycle_time = 0.64                # sec
 
         # Reference sign for each leg in compute_ref_state.
@@ -232,7 +232,7 @@ class PikachuCfg(LeggedRobotCfg):
             tracking_lin_vel = 1.2
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2 #0.2
+            low_speed = 0.3 #0.2
             track_vel_hard = 0.5 #0.5
             # base pos
             default_joint_pos = 0.05
