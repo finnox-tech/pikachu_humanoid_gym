@@ -48,6 +48,7 @@ class PikachuCfg(LeggedRobotCfg):
         episode_length_s = 24     # episode length in seconds
         use_ref_actions = False   # speed up training by using reference actions
         foot_contact_force=3.0  # contact force threshold for foot-ground contact
+        base_vel_lpf = 0.99
 
         get_commands_from_keyboard = False
         debug = False
@@ -231,7 +232,7 @@ class PikachuCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
+            tracking_lin_vel = 1.5
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2 #0.2

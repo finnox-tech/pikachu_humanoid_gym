@@ -530,7 +530,7 @@ class PikachuEnv(LeggedRobot):
         Calculates a reward based on the number of feet contacts aligning with the gait phase. 
         Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
         """
-        
+
         contact = self.contact_forces[:, self.feet_indices, 2] >  self.cfg.env.foot_contact_force
         stance_mask = self._get_gait_phase()
         reward = torch.where(contact == stance_mask, 1.0, -0.3)
@@ -647,6 +647,16 @@ class PikachuEnv(LeggedRobot):
         lin_vel_error = torch.sum(torch.square(
             self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error * self.cfg.rewards.tracking_sigma)
+
+    def _reward_tracking_lin_vel_y(self):
+        """
+        Tracks linear velocity commands along the xy axes. 
+        Calculates a reward based on how closely the robot's linear velocity matches the commanded values.
+        """
+        lin_vel_error_y = torch.sum(torch.square(
+            self.commands[:, 1] - self.base_lin_vel_lpf[:, 1]), dim=1)
+        return torch.exp(-lin_vel_error_y * self.cfg.rewards.tracking_sigma)
+
 
     def _reward_tracking_ang_vel(self):
         """

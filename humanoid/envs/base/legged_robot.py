@@ -85,6 +85,8 @@ class LeggedRobot(BaseTask):
         self.heading_target=0
         self._get_commands_from_keyboard = self.cfg.env.get_commands_from_keyboard
         self._debug = self.cfg.env.debug
+
+        self.filtered_lin_vel_y=0
         if self._get_commands_from_keyboard:
             pygame.init()
             # open a blank pygame window
@@ -142,6 +144,7 @@ class LeggedRobot(BaseTask):
         # prepare quantities
         self.base_quat[:] = self.root_states[:, 3:7]
         self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
+        self.base_lin_vel_lpf[:] = self.cfg.env.base_vel_lpf * self.base_lin_vel_lpf + (1 - self.cfg.env.base_vel_lpf) * self.base_lin_vel
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         self.base_euler_xyz = get_euler_xyz_tensor(self.base_quat)
@@ -487,6 +490,7 @@ class LeggedRobot(BaseTask):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
+        self.base_lin_vel_lpf = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         if self.cfg.terrain.measure_heights:
