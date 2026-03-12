@@ -210,8 +210,8 @@ class PikachuCfg(LeggedRobotCfg):
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
-        # tracking_sigma = 5
-        tracking_sigma = 0.25
+        tracking_sigma = 7
+        # tracking_sigma = 0.25
         max_contact_force = 100  # Forces above this value are penalized
 
         class scales:
