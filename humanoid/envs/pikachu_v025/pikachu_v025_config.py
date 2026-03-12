@@ -218,7 +218,7 @@ class PikachuCfg(LeggedRobotCfg):
             # 抬脚高度奖励
             feet_clearance = 1
             # 每只脚接触顺序
-            feet_contact_number = 1
+            feet_contact_number = 2
             
             # gait
             feet_air_time = 1.5
