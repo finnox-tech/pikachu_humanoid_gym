@@ -375,7 +375,7 @@ class PikachuEnv(LeggedRobot):
 
             foot_pos = self.rigid_state[:, self.knee_indices, :2]
             foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-            print(foot_dist)
+            # print(foot_dist)
 
             contact_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
             # print(contact_force)
@@ -429,6 +429,8 @@ class PikachuEnv(LeggedRobot):
 
             # print("left:", left_error.item())
             # print("right:", right_error.item())
+
+            # print(torch.sum(torch.abs(self.dof_pos - self.default_joint_pd_target), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1))
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
