@@ -227,7 +227,7 @@ class PikachuCfg(LeggedRobotCfg):
             contact_no_vel = -1
             feet_distance = 0.2
             knee_distance = 0.2
-            stand_still = -0.1
+            stand_still = -0.05
             # contact
             feet_contact_forces = -0.01
             # vel tracking
