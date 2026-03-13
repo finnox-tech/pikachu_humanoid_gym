@@ -63,10 +63,11 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
         name = "Pikachu_V0025"
         foot_name = "ankle"
+        hand_name = "arm_roll"
         knee_name = "knee"
 
-        terminate_after_contacts_on = ['base_link']
-        penalize_contacts_on = ["base_link"]
+        terminate_after_contacts_on = ['world', 'base_link']  # episode is terminated when contact is detected on these links
+        penalize_contacts_on = ["world","base_link"]
         self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
         replace_cylinder_with_capsule = False

@@ -312,7 +312,7 @@ class PikachuQuadEnv(LeggedRobot):
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
-
+        hand_contact_mask = self.contact_forces[:, self.hand_indices, 2] > self.cfg.env.foot_contact_force
         self.command_input = torch.cat(
             (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
         
@@ -373,7 +373,7 @@ class PikachuQuadEnv(LeggedRobot):
             measured_heights = torch.sum(
                 self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
             base_height = self.root_states[:, 2] - (measured_heights - 0.05)
-            print(base_height)
+            # print(base_height)
 
             foot_pos = self.rigid_state[:, self.feet_indices, :2]
             foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
@@ -442,6 +442,11 @@ class PikachuQuadEnv(LeggedRobot):
             # print("right:", right_error.item())
 
             # print(torch.sum(torch.abs(self.dof_pos - self.default_joint_pd_target), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1))
+
+            # hands
+            contact_force = torch.norm(self.contact_forces[:, self.hand_indices, :], dim=-1)
+            hand_contact = self.contact_forces[:, self.hand_indices, 2] >  self.cfg.env.foot_contact_force
+            print(contact_force)
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
