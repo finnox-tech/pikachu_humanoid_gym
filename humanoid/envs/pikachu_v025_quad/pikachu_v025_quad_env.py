@@ -97,11 +97,13 @@ class PikachuQuadEnv(LeggedRobot):
             idx("left_hip_pitch_joint"),
             idx("left_knee_joint"),
             idx("left_ankle_joint"),
+            idx("left_arm_pitch_joint"),
         )
         self.right_ref_joint_indices = (
             idx("right_hip_pitch_joint"),
             idx("right_knee_joint"),
             idx("right_ankle_joint"),
+            idx("right_arm_pitch_joint"),
         )
 
         # print("Reference joint indices:")
@@ -312,6 +314,7 @@ class PikachuQuadEnv(LeggedRobot):
         
         diff = self.dof_pos - self.ref_dof_pos
 
+        # 5+4*num_action+9+2+3+2+4=65+4*(14-10)=65+16=81
         self.privileged_obs_buf = torch.cat((
             self.command_input,  # 2 + 3
             (self.dof_pos - self.default_joint_pd_target) * \
@@ -330,6 +333,7 @@ class PikachuQuadEnv(LeggedRobot):
             contact_mask,  # 2
         ), dim=-1)
 
+        # 5+3*num_actions + 6 = 5+3*14+6=53
         obs_buf = torch.cat((
             self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
             q,    # num_actions

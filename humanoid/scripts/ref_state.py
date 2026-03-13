@@ -214,15 +214,41 @@ def _plot_ref(data, actual_data=None):
     plt.show()
 
 
+def _joint_type(joint_name: str) -> str:
+    """Strip side prefix (left_/right_) and '_joint' suffix to get the joint type key.
+
+    E.g. 'left_hip_pitch_joint' -> 'hip_pitch',
+         'left_elbow_ankle_joint' -> 'elbow_ankle'.
+    Using exact type matching avoids substring false-positives such as
+    'ankle' accidentally matching 'elbow_ankle_joint'.
+    """
+    name = joint_name
+    if name.endswith("_joint"):
+        name = name[:-6]
+    for prefix in ("left_", "right_"):
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+            break
+    return name
+
+
 def _get_pd_gain_for_joint(joint_name, stiffness_cfg, damping_cfg):
-    k = 0.0
-    d = 0.0
+    """Return (k, d) PD gains for *joint_name* by exact type-key matching.
+
+    Falls back to small non-zero gains for joints not listed in the config
+    (e.g. arm joints on the quad URDF) so they stay near their default
+    position during fixed-base visualization instead of drooping under gravity.
+    """
+    jtype = _joint_type(joint_name)
+    # Small fallback so uncontrolled joints (e.g. quad arm joints) hold pose.
+    k = 5.0
+    d = 0.5
     for key, value in stiffness_cfg.items():
-        if key in joint_name:
+        if key == jtype:
             k = float(value)
             break
     for key, value in damping_cfg.items():
-        if key in joint_name:
+        if key == jtype:
             d = float(value)
             break
     return k, d
@@ -433,7 +459,12 @@ def _simulate_ref_motion(
 
 def main():
     parser = argparse.ArgumentParser("Visualize config-based reference gait trajectories.")
-    parser.add_argument("--task", type=str, default="Pikachu_V025")
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="Pikachu_V025",
+        help="task name, e.g. Pikachu_V025, Pikachu_V025_Quad, Pikachu_V01, humanoid_ppo",
+    )
     parser.add_argument("--seconds", type=float, default=4.0, help="visualization duration")
     parser.add_argument(
         "--dt",

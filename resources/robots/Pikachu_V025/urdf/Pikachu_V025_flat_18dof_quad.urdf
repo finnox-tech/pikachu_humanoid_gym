@@ -850,7 +850,7 @@
   </link>
   <joint
     name="left_arm_yaw_joint"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="5.00000000000137E-05 0 -0.051"
       rpy="0 0 0" />
@@ -912,7 +912,7 @@
   </link>
   <joint
     name="left_elbow_ankle_joint"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="0 0 -0.021"
       rpy="0 0 0" />
@@ -1098,7 +1098,7 @@
   </link>
   <joint
     name="right_arm_yaw_joint"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="-5.00000000000223E-05 0 -0.051"
       rpy="0 0 0" />
@@ -1160,7 +1160,7 @@
   </link>
   <joint
     name="right_elbow_ankle_joint"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="0 0 -0.021"
       rpy="0 0 0" />

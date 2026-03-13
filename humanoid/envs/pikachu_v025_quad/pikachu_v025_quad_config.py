@@ -39,11 +39,11 @@ class PikachuQuadCfg(LeggedRobotCfg):
         # change the observation dim
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 41
+        num_single_obs = 53 # 5 + 3*num_actions + 6 = 5 + 3*14 + 6 = 53
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 65
+        single_num_privileged_obs = 81 # 5 + 4*num_actions + 6 = 5 + 4*14 + 20 = 81
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
-        num_actions = 10
+        num_actions = 14
         num_envs = 4096
         episode_length_s = 24     # episode length in seconds
         use_ref_actions = False   # speed up training by using reference actions
@@ -107,22 +107,22 @@ class PikachuQuadCfg(LeggedRobotCfg):
         default_joint_angles = {  # = target angles [rad] when action = 0.0
           'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : 2.44,         
-           'left_knee_joint' : 1.57,       
-           'left_ankle_joint' : 0.68,     
+           'left_hip_pitch_joint' : -2.0,         
+           'left_knee_joint' : -1.0,       
+           'left_ankle_joint' : -0.7,     
 
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 2.44,                                       
-           'right_knee_joint' : 1.57,                                             
-           'right_ankle_joint' : 0.68,     
+           'right_hip_pitch_joint' : 2.0,                                       
+           'right_knee_joint' : 1.0,                                             
+           'right_ankle_joint' : 0.7,     
 
-           'left_arm_pitch_joint' : 1.77,
+           'left_arm_pitch_joint' : -1.77,
            'left_arm_roll_joint' : 0.0,
+
 
            'right_arm_pitch_joint' : 1.77,
            'right_arm_roll_joint' : 0.0,
-                  
 
         #    'left_hip_yaw_joint' : 0. ,   
         #    'left_hip_roll_joint' : 0,               
@@ -143,6 +143,8 @@ class PikachuQuadCfg(LeggedRobotCfg):
                      'hip_yaw': 25,
                      'knee': 50,
                      'ankle': 50,
+                     'arm_pitch': 10,
+                     'arm_roll': 10, 
                      }  # [N*m/rad]
         
         damping = {  'hip_pitch': 1,
@@ -150,6 +152,8 @@ class PikachuQuadCfg(LeggedRobotCfg):
                      'hip_yaw': 0.05,
                      'knee': 0.1,
                      'ankle': 0.01,
+                     'arm_pitch': 0,
+                     'arm_roll': 0,     
                      }  # [N*m/rad]  
         
         # action scale: target angle = actionScale * action + defaultAngle
@@ -305,3 +309,32 @@ class PikachuQuadCfgPPO(LeggedRobotCfgPPO):
         load_run = -1  # -1 = last run
         checkpoint = -1  # -1 = last saved model
         resume_path = None  # updated from load_run and chkpt
+
+# =========刚体顺序=========
+# ['world', 'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link', 'left_elbow_ankle_link', 'left_hip_pitch_link', 'left_hip_roll_link', 'left_hip_yaw_link', 'left_knee_link', 'left_ankle_link', 'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link', 'right_elbow_ankle_link', 'right_hip_pitch_link', 'right_hip_roll_link', 'right_hip_yaw_link', 'right_knee_link', 'right_ankle_link']
+# =========DOF顺序=========
+# DOF数量:18
+ 
+# ['left_arm_pitch_joint', 'left_arm_roll_joint', 'left_arm_yaw_joint', 'left_elbow_ankle_joint', 'left_hip_pitch_joint', 'left_hip_roll_joint', 'left_hip_yaw_joint', 'left_knee_joint', 'left_ankle_joint', 'right_arm_pitch_joint', 'right_arm_roll_joint', 'right_arm_yaw_joint', 'right_elbow_ankle_joint', 'right_hip_pitch_joint', 'right_hip_roll_joint', 'right_hip_yaw_joint', 'right_knee_joint', 'right_ankle_joint']
+# DOF属性:
+# ('hasLimits', 'lower', 'upper', 'driveMode', 'velocity', 'effort', 'stiffness', 'damping', 'friction', 'armature')
+# [( True, -3.14, 1.05, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -2.44, 0.  , 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -2.44, 0.  , 3, 2., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.09, 0.26, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -0.26, 0.09, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -1.57, 0.  , 3, 3., 12.5, 0., 0.15, 0.01, 0.)
+#  ( True, -1.05, 0.52, 3, 2.,  9. , 0., 0.4 , 0.01, 0.)
+#  ( True, -1.05, 3.14, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 0.  , 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 2.44, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 2.44, 3, 2., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.26, 0.09, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -0.09, 0.26, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True,  0.  , 1.57, 3, 3., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.52, 1.05, 3, 2.,  9. , 0., 0.15, 0.01, 0.)]
+
+# =========================
