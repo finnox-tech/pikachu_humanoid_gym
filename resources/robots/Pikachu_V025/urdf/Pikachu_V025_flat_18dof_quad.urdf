@@ -116,10 +116,10 @@
     <child
       link="left_hip_pitch_link" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit 
-      lower="0"    
-      upper="2.44"    
+      lower="-2.44"    
+      upper="0"    
       effort="12.5"  
       velocity="2" />
    <dynamics 
@@ -240,10 +240,10 @@
     <child
       link="left_hip_yaw_link" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit 
-      lower="-0.09"    
-      upper="0.26"    
+      lower="-0.26"    
+      upper="0.09"    
       effort="9.0"  
       velocity="1" />
    <dynamics 
@@ -302,10 +302,10 @@
     <child
       link="left_knee_link" />
     <axis
-      xyz="0 1 0" />
+      xyz="0 -1 0" />
     <limit 
-      lower="0"    
-      upper="1.57"    
+      lower="-1.57"    
+      upper="0"    
       effort="12.5"  
       velocity="3" />
    <dynamics 
@@ -364,10 +364,10 @@
     <child
       link="left_ankle_link" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit 
-      lower="-0.52"    
-      upper="1.05"    
+      lower="-1.05"    
+      upper="0.52  "  
       effort="9.0"  
       velocity="2" />
    <dynamics 
@@ -488,10 +488,10 @@
     <child
       link="right_hip_roll_link" />
     <axis
-      xyz="-1 0 0" />
+      xyz="1 0 0" />
     <limit 
-      lower="-0.09"    
-      upper="0.26"    
+      lower="-0.26"    
+      upper="0.09"    
       effort="9.0"  
       velocity="1" />
    <dynamics 
@@ -735,10 +735,10 @@
     <child
       link="left_arm_pitch_link" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit 
-      lower="-1.05"    
-      upper="3.14"    
+      lower="-3.14"    
+      upper="1.05"    
       effort="9"  
       velocity="2" />
    <dynamics 
@@ -859,7 +859,7 @@
     <child
       link="left_arm_yaw_link" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit 
       lower="-1.57"    
       upper="1.57"    
@@ -921,10 +921,10 @@
     <child
       link="left_elbow_ankle_link" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit 
-      lower="0"    
-      upper="2.44"    
+      lower="-2.44"    
+      upper="0"    
       effort="9"  
       velocity="2" />
    <dynamics 
@@ -1045,10 +1045,10 @@
     <child
       link="right_arm_roll_link" />
     <axis
-      xyz="-1 0 0" />
+      xyz="1 0 0" />
     <limit 
-      lower="0.0"    
-      upper="1.57"    
+      lower="-1.57"    
+      upper="0"    
       effort="9"  
       velocity="2" />
    <dynamics 
@@ -1107,7 +1107,7 @@
     <child
       link="right_arm_yaw_link" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit 
       lower="-1.57"    
       upper="1.57"    

@@ -863,7 +863,7 @@
 
   </joint>
   <link
-    name="left_elbow_link">
+    name="left_elbow_ankle_link">
     <inertial>
       <origin
         xyz="1.42606466999734E-15 0.00793437988860006 -0.0327214156612208"
@@ -911,7 +911,7 @@
     <parent
       link="left_arm_yaw_link" />
     <child
-      link="left_elbow_link" />
+      link="left_elbow_ankle_link" />
     <axis
       xyz="0 -1 0" />
     <limit 
@@ -1111,7 +1111,7 @@
 
   </joint>
   <link
-    name="right_elbow_link">
+    name="right_elbow_ankle_link">
     <inertial>
       <origin
         xyz="-1.42629506295899E-15 -0.00793437988860005 -0.0327214156612207"
@@ -1159,7 +1159,7 @@
     <parent
       link="right_arm_yaw_link" />
     <child
-      link="right_elbow_link" />
+      link="right_elbow_ankle_link" />
     <axis
       xyz="0 -1 0" />
     <limit 

@@ -39,11 +39,11 @@ class PikachuQuadCfg(LeggedRobotCfg):
         # change the observation dim
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 66  # 6(sin/cos/vx/vy/vyaw/mode) + 3*18(q/dq/actions) + 6(ang_vel/euler)
+        num_single_obs = 41
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 98  # 6(cmd) + 4*18(dof) + 20(vel/euler/push/mass/contact)
+        single_num_privileged_obs = 65
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
-        num_actions = 18  # 10 leg joints + 8 arm joints for quadrupedal walking
+        num_actions = 10
         num_envs = 4096
         episode_length_s = 24     # episode length in seconds
         use_ref_actions = False   # speed up training by using reference actions
@@ -59,7 +59,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_18dof.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_18dof_quad.urdf'
 
         name = "Pikachu_V0025"
         foot_name = "ankle"
@@ -105,28 +105,35 @@ class PikachuQuadCfg(LeggedRobotCfg):
         pos = [0.0, 0.0, 0.15]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-           # Leg joints - start in bipedal stance to allow learning transition to quadrupedal
-           'left_hip_yaw_joint' : 0. ,
-           'left_hip_roll_joint' : 0,
-           'left_hip_pitch_joint' : -0.3,
-           'left_knee_joint' : -1.12,
-           'left_ankle_joint' : -0.8,
-           'right_hip_yaw_joint' : 0.,
-           'right_hip_roll_joint' : 0,
-           'right_hip_pitch_joint' : 0.3,
-           'right_knee_joint' : 1.12,
-           'right_ankle_joint' : 0.8,
+          'left_hip_yaw_joint' : 0. ,   
+           'left_hip_roll_joint' : 0,               
+           'left_hip_pitch_joint' : 2.44,         
+           'left_knee_joint' : 1.57,       
+           'left_ankle_joint' : 0.68,     
 
-           # Arm joints - start in neutral position to allow learning transition to quadrupedal
-           # Initially in more upright position to allow learning to lower arms
-           'left_arm_pitch_joint' : 0.,    # Neutral position (instead of reaching forward)
-           'left_arm_roll_joint' : 0.,     # Neutral position
-           'left_arm_yaw_joint' : 0.,      # Neutral position
-           'left_elbow_joint' : 0.,        # Neutral position (not bent as much)
-           'right_arm_pitch_joint' : 0.,   # Neutral position
-           'right_arm_roll_joint' : 0.,    # Neutral position
-           'right_arm_yaw_joint' : 0.,     # Neutral position
-           'right_elbow_joint' : 0.,       # Neutral position
+           'right_hip_yaw_joint' : 0., 
+           'right_hip_roll_joint' : 0, 
+           'right_hip_pitch_joint' : 2.44,                                       
+           'right_knee_joint' : 1.57,                                             
+           'right_ankle_joint' : 0.68,     
+
+           'left_arm_pitch_joint' : 1.77,
+           'left_arm_roll_joint' : 0.0,
+
+           'right_arm_pitch_joint' : 1.77,
+           'right_arm_roll_joint' : 0.0,
+                  
+
+        #    'left_hip_yaw_joint' : 0. ,   
+        #    'left_hip_roll_joint' : 0,               
+        #    'left_hip_pitch_joint' : 0,         
+        #    'left_knee_joint' : 0,       
+        #    'left_ankle_joint' : 0,     
+        #    'right_hip_yaw_joint' : 0., 
+        #    'right_hip_roll_joint' : 0, 
+        #    'right_hip_pitch_joint' : 0,                                       
+        #    'right_knee_joint' : 0,                                             
+        #    'right_ankle_joint' : 0,   
         }
 
     class control(LeggedRobotCfg.control):
@@ -136,23 +143,15 @@ class PikachuQuadCfg(LeggedRobotCfg):
                      'hip_yaw': 25,
                      'knee': 50,
                      'ankle': 50,
-                     'arm_pitch': 40,
-                     'arm_roll': 30,
-                     'arm_yaw': 20,
-                     'elbow': 30,
                      }  # [N*m/rad]
-
+        
         damping = {  'hip_pitch': 1,
                      'hip_roll': 0.6,
                      'hip_yaw': 0.05,
                      'knee': 0.1,
                      'ankle': 0.01,
-                     'arm_pitch': 0.5,
-                     'arm_roll': 0.3,
-                     'arm_yaw': 0.02,
-                     'elbow': 0.05,
-                     }  # [N*m/rad]
-
+                     }  # [N*m/rad]  
+        
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
@@ -191,9 +190,8 @@ class PikachuQuadCfg(LeggedRobotCfg):
         action_noise = 0.02
 
     class commands(LeggedRobotCfg.commands):
-        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading, mode
-        # mode: 0=biped (双足), 1=quad (四足)
-        num_commands = 5
+        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        num_commands = 4
         resampling_time = 8.  # time before command are changed[s]
         heading_command = True  # if true: compute ang vel command from heading error
 
@@ -202,11 +200,9 @@ class PikachuQuadCfg(LeggedRobotCfg):
             lin_vel_y = [-0.3, 0.3]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3] # min max [rad/s]
             heading = [-3.14, 3.14]
-            mode = [0, 1]             # 0=biped, 1=quad
 
     class rewards:
-        base_height_target = 0.155   # quad mode target base height (四足模式)
-        base_height_biped = 0.35     # biped mode target base height (双足模式)
+        base_height_target = 0.12
         # distance between 2 leg? 0.17~0.18
         min_dist = 0.1
         max_dist = 0.3
@@ -233,7 +229,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             feet_clearance = 1
             # 每只脚接触顺序
             feet_contact_number = 2
-
+            
             # gait
             feet_air_time = 1.5
             # 脚滑奖励（惩罚）
@@ -254,13 +250,6 @@ class PikachuQuadCfg(LeggedRobotCfg):
             # default_joint_pos = 0.1
             default_joint_pos_left = 0.2
             default_joint_pos_right = 0.2
-            # arm joint rewards for quadrupedal walking
-            default_arm_joint_pos = 0.15  # Encourage arms to stay in useful positions
-
-            # quadrupedal-specific rewards
-            quadrupedal_posture = 2.0     # Encourage quadrupedal body position
-            arms_contact = 1.5            # Encourage arms touching ground
-            body_orientation_for_quadruped = 1.0  # Encourage level body for quadrupedal
 
             orientation = 1.2
             base_height = 0.2
@@ -309,7 +298,7 @@ class PikachuQuadCfgPPO(LeggedRobotCfgPPO):
 
         # logging
         save_interval = 100  # Please check for potential savings every `save_interval` iterations.
-        experiment_name = 'Pikachu_V025_quad'
+        experiment_name = 'Pikachu_V025_Quad'
         run_name = ''
         # Load and resume
         resume = False
