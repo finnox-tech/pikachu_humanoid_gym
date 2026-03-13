@@ -49,7 +49,22 @@ def _parse_urdf_dof_names(urdf_path: str):
 
 
 def _select_ref_joint_names(default_joint_angles):
-    # Prefer Pikachu naming.
+    # Pikachu Quad: hip/knee/ankle + arm_pitch per side (8 joints total).
+    # Must be checked before plain pikachu because it is a strict superset.
+    pikachu_quad = (
+        "left_hip_pitch_joint",
+        "left_knee_joint",
+        "left_ankle_joint",
+        "left_arm_pitch_joint",
+        "right_hip_pitch_joint",
+        "right_knee_joint",
+        "right_ankle_joint",
+        "right_arm_pitch_joint",
+    )
+    if all(name in default_joint_angles for name in pikachu_quad):
+        return pikachu_quad
+
+    # Pikachu V025 / V01: hip/knee/ankle only (6 joints).
     pikachu = (
         "left_hip_pitch_joint",
         "left_knee_joint",
@@ -88,7 +103,12 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
         if name not in joint_to_idx:
             raise KeyError(f"Joint '{name}' not found in URDF dof names.")
 
-    lh, lk, la, rh, rk, ra = (joint_to_idx[n] for n in ref_names)
+    # Determine whether this is the quad variant (8 ref joints per side).
+    has_arm = len(ref_names) == 8
+    if has_arm:
+        lh, lk, la, la_arm, rh, rk, ra, ra_arm = (joint_to_idx[n] for n in ref_names)
+    else:
+        lh, lk, la, rh, rk, ra = (joint_to_idx[n] for n in ref_names)
 
     cycle_time = (
         float(cycle_time_override)
@@ -101,6 +121,7 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
         else float(cfg.rewards.target_joint_pos_scale)
     )
     scale_2 = 2.0 * scale_1
+    scale_3 = 0.5 * scale_1
     left_sign = float(getattr(cfg.rewards, "left_ref_sign", 1.0))
     right_sign = float(getattr(cfg.rewards, "right_ref_sign", 1.0))
 
@@ -123,6 +144,13 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
     ref_dof_pos[:, rk] = right_sign * sin_pos_r * scale_2
     ref_dof_pos[:, ra] = right_sign * sin_pos_r * scale_1
 
+    if has_arm:
+        # Arm pitch is opposite phase to the leg on the same side:
+        #   left  arm active when sin > 0  (= right-leg swing phase)
+        #   right arm active when sin < 0  (= left-leg  swing phase)
+        ref_dof_pos[:, la_arm] = -left_sign * sin_pos_r * scale_1
+        ref_dof_pos[:, ra_arm] = -right_sign * sin_pos_l * scale_1
+
     ds_mask = np.abs(sin_pos) < 0.1
     ref_dof_pos[ds_mask, :] = 0.0
 
@@ -130,6 +158,9 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
     action_scale = float(cfg.control.action_scale)
     ref_pd_offset = action_scale * ref_action
 
+    ref_joint_indices = (
+        (lh, lk, la, la_arm, rh, rk, ra, ra_arm) if has_arm else (lh, lk, la, rh, rk, ra)
+    )
     return {
         "t": t,
         "sin_pos": sin_pos,
@@ -138,7 +169,7 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
         "ref_action": ref_action,
         "ref_pd_offset": ref_pd_offset,
         "dof_names": list(dof_names),
-        "ref_joint_indices": (lh, lk, la, rh, rk, ra),
+        "ref_joint_indices": ref_joint_indices,
         "ref_joint_names": ref_names,
         "cycle_time": cycle_time,
         "scale_1": scale_1,
@@ -155,12 +186,19 @@ def _plot_ref(data, actual_data=None):
     ref_dof_pos = data["ref_dof_pos"]
     sin_pos = data["sin_pos"]
     ref_names = data["ref_joint_names"]
-    lh, lk, la, rh, rk, ra = data["ref_joint_indices"]
+    indices = data["ref_joint_indices"]
     actual_t = None
     actual_pos = None
     if actual_data is not None:
         actual_t = actual_data.get("t", None)
         actual_pos = actual_data.get("dof_pos", None)
+
+    # Works for both 6-joint (plain pikachu) and 8-joint (quad) configs.
+    n_per_side = len(indices) // 2
+    left_indices = indices[:n_per_side]
+    right_indices = indices[n_per_side:]
+    left_names = ref_names[:n_per_side]
+    right_names = ref_names[n_per_side:]
 
     fig = plt.figure(figsize=(14, 8))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 3])
@@ -176,35 +214,27 @@ def _plot_ref(data, actual_data=None):
     ax_phase.legend()
     ax_phase.grid(alpha=0.3)
 
-    # Left leg: same color per joint, dashed=ref, solid=actual
-    left_specs = [
-        (lh, ref_names[0], cmap(0)),
-        (lk, ref_names[1], cmap(1)),
-        (la, ref_names[2], cmap(2)),
-    ]
+    # Left side: same color per joint, dashed=ref, solid=actual
+    left_specs = [(left_indices[i], left_names[i], cmap(i)) for i in range(n_per_side)]
     for idx, name, color in left_specs:
         ax_left.plot(t, ref_dof_pos[:, idx], linestyle="--", color=color, label=f"{name} ref")
         if actual_t is not None and actual_pos is not None and len(actual_t) > 0:
             ax_left.plot(actual_t, actual_pos[:, idx], linestyle="-", color=color, label=f"{name} actual")
 
-    # Right leg: same color per joint, dashed=ref, solid=actual
-    right_specs = [
-        (rh, ref_names[3], cmap(0)),
-        (rk, ref_names[4], cmap(1)),
-        (ra, ref_names[5], cmap(2)),
-    ]
+    # Right side: same color per joint, dashed=ref, solid=actual
+    right_specs = [(right_indices[i], right_names[i], cmap(i)) for i in range(n_per_side)]
     for idx, name, color in right_specs:
         ax_right.plot(t, ref_dof_pos[:, idx], linestyle="--", color=color, label=f"{name} ref")
         if actual_t is not None and actual_pos is not None and len(actual_t) > 0:
             ax_right.plot(actual_t, actual_pos[:, idx], linestyle="-", color=color, label=f"{name} actual")
 
-    ax_left.set_title("Left Leg: Ref (dashed) vs Actual (solid)")
+    ax_left.set_title("Left Side: Ref (dashed) vs Actual (solid)")
     ax_left.set_xlabel("time [s]")
     ax_left.set_ylabel("joint offset [rad]")
     ax_left.grid(alpha=0.3)
     ax_left.legend(ncol=2, fontsize=8)
 
-    ax_right.set_title("Right Leg: Ref (dashed) vs Actual (solid)")
+    ax_right.set_title("Right Side: Ref (dashed) vs Actual (solid)")
     ax_right.set_xlabel("time [s]")
     ax_right.set_ylabel("joint offset [rad]")
     ax_right.grid(alpha=0.3)
@@ -490,7 +520,7 @@ def main():
     parser.add_argument(
         "--base_lift",
         type=float,
-        default=0.5,
+        default=0.2,
         help="extra base height (m) applied in sim visualization",
     )
     parser.add_argument(

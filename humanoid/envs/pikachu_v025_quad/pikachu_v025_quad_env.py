@@ -181,16 +181,21 @@ class PikachuQuadEnv(LeggedRobot):
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
+        scale_3 = 1 * scale_1
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
         self.ref_dof_pos[:, self.left_ref_joint_indices[0]] =  sin_pos_l * scale_1
         self.ref_dof_pos[:, self.left_ref_joint_indices[1]] =  sin_pos_l * scale_2
         self.ref_dof_pos[:, self.left_ref_joint_indices[2]] =  sin_pos_l * scale_1
+
         # right foot stance phase set to default joint pos
         sin_pos_r[sin_pos_r < 0] = 0
         self.ref_dof_pos[:, self.right_ref_joint_indices[0]] =  sin_pos_r * scale_1
         self.ref_dof_pos[:, self.right_ref_joint_indices[1]] =  sin_pos_r * scale_2
         self.ref_dof_pos[:, self.right_ref_joint_indices[2]] =  sin_pos_r * scale_1
+
+        self.ref_dof_pos[:, self.left_ref_joint_indices[3]]  = -sin_pos_r * scale_3
+        self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_l * scale_3
         # Double support phase
         self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
