@@ -1,0 +1,354 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
+
+
+from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
+
+
+class PikachuTransferCfg(LeggedRobotCfg):
+    """
+    Configuration class for the XBotL humanoid robot.
+    """
+    class env(LeggedRobotCfg.env):
+        # change the observation dim
+        frame_stack = 15
+        c_frame_stack = 3
+        num_single_obs = 53 # 5 + 3*num_actions + 6 = 5 + 3*14 + 6 = 53
+        num_observations = int(frame_stack * num_single_obs)
+        single_num_privileged_obs = 81 # 5 + 4*num_actions + 6 = 5 + 4*14 + 20 = 81
+        num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
+        num_actions = 14
+        num_envs = 4096
+        episode_length_s = 24     # episode length in seconds
+        use_ref_actions = False   # speed up training by using reference actions
+        foot_contact_force=3.0  # contact force threshold for foot-ground contact
+        hand_contact_force=3.0  # contact force threshold for hand-ground contact
+        base_vel_lpf = 0.9
+
+        get_commands_from_keyboard = False
+        debug = False
+    class safety:
+        # safety factors
+        pos_limit = 0.9
+        vel_limit = 1.0
+        torque_limit = 0.85
+
+    class asset(LeggedRobotCfg.asset):
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof_quad.urdf'
+
+        name = "Pikachu_V0025"
+        foot_name = "ankle"
+        hand_name = "arm_roll"
+        knee_name = "knee"
+
+        terminate_after_contacts_on = ['world', 'base_link']  # episode is terminated when contact is detected on these links
+        penalize_contacts_on = ["world","base_link"]
+        self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
+        flip_visual_attachments = False
+        replace_cylinder_with_capsule = False
+        fix_base_link = False
+
+    class terrain(LeggedRobotCfg.terrain):
+        mesh_type = 'plane'
+        # mesh_type = 'trimesh'
+        curriculum = False
+        # rough terrain only:
+        measure_heights = False
+        static_friction = 0.6
+        dynamic_friction = 0.6
+        terrain_length = 8.
+        terrain_width = 8.
+        num_rows = 20  # number of terrain rows (levels)
+        num_cols = 20  # number of terrain cols (types)
+        max_init_terrain_level = 10  # starting curriculum state
+        # plane; obstacles; uniform; slope_up; slope_down, stair_up, stair_down
+        terrain_proportions = [0.2, 0.2, 0.4, 0.1, 0.1, 0, 0]
+        restitution = 0.
+
+    class noise:
+        add_noise = True
+        noise_level = 0.6    # scales other values
+
+        class noise_scales:
+            dof_pos = 0.05
+            dof_vel = 0.5
+            ang_vel = 0.1
+            lin_vel = 0.05
+            quat = 0.03
+            height_measurements = 0.1
+
+    class init_state(LeggedRobotCfg.init_state):
+        pos = [0.0, 0.0, 0.15]
+
+        default_joint_angles = {  # = target angles [rad] when action = 0.0
+          'left_hip_yaw_joint' : 0. ,   
+           'left_hip_roll_joint' : 0,               
+           'left_hip_pitch_joint' : -2.0,         
+           'left_knee_joint' : -1.0,       
+           'left_ankle_joint' : -0.7,     
+
+           'right_hip_yaw_joint' : 0., 
+           'right_hip_roll_joint' : 0, 
+           'right_hip_pitch_joint' : 2.0,                                       
+           'right_knee_joint' : 1.0,                                             
+           'right_ankle_joint' : 0.7,     
+
+           'left_arm_pitch_joint' : -1.77,
+           'left_arm_roll_joint' : 0.0,
+
+           'right_arm_pitch_joint' : 1.77,
+           'right_arm_roll_joint' : 0.0,
+
+        }
+        
+        stand_default_joint_angles = {  # = target angles [rad] when action = 0.0
+         'left_hip_yaw_joint' : 0. ,   
+           'left_hip_roll_joint' : 0,               
+           'left_hip_pitch_joint' : -0.3,         
+           'left_knee_joint' : -1.12,       
+           'left_ankle_joint' : -0.8,    
+
+           'right_hip_yaw_joint' : 0., 
+           'right_hip_roll_joint' : 0, 
+           'right_hip_pitch_joint' : 0.3,                                       
+           'right_knee_joint' : 1.12,                                             
+           'right_ankle_joint' : 0.8,    
+
+           'left_arm_pitch_joint' : 0,
+           'left_arm_roll_joint' : 0.0,
+           'right_arm_pitch_joint' : 0,
+           'right_arm_roll_joint' : 0.0,
+
+        }
+
+    class control(LeggedRobotCfg.control):
+        # PD Drive parameters:
+        stiffness = {'hip_pitch': 80,
+                     'hip_roll': 50,
+                     'hip_yaw': 25,
+                     'knee': 50,
+                     'ankle': 50,
+                     'arm_pitch': 10,
+                     'arm_roll': 10, 
+                     }  # [N*m/rad]
+        
+        damping = {  'hip_pitch': 1,
+                     'hip_roll': 0.6,
+                     'hip_yaw': 0.05,
+                     'knee': 0.1,
+                     'ankle': 0.01,
+                     'arm_pitch': 0,
+                     'arm_roll': 0,     
+                     }  # [N*m/rad]  
+        
+        # action scale: target angle = actionScale * action + defaultAngle
+        action_scale = 0.25
+        # decimation: Number of control action updates @ sim DT per policy DT
+        decimation = 10  # 100hz
+
+    class sim(LeggedRobotCfg.sim):
+        dt = 0.001  # 1000 Hz
+        substeps = 1
+        up_axis = 1  # 0 is y, 1 is z
+
+        class physx(LeggedRobotCfg.sim.physx):
+            num_threads = 10
+            solver_type = 1  # 0: pgs, 1: tgs
+            num_position_iterations = 4
+            num_velocity_iterations = 1
+            contact_offset = 0.01  # [m]
+            rest_offset = 0.0   # [m]
+            bounce_threshold_velocity = 0.1  # [m/s]
+            max_depenetration_velocity = 1.0
+            max_gpu_contact_pairs = 2**23  # 2**24 -> needed for 8000 envs and more
+            default_buffer_size_multiplier = 5
+            # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
+            contact_collection = 2
+
+    class domain_rand:
+        randomize_friction = True
+        friction_range = [0.1, 2.0]
+        randomize_base_mass = True
+        added_mass_range = [-0.2, 0.2]
+        push_robots = True
+        push_interval_s = 4
+        max_push_vel_xy = 0.2
+        max_push_ang_vel = 0.4
+        # dynamic randomization
+        action_delay = 0.5
+        action_noise = 0.02
+
+    class commands(LeggedRobotCfg.commands):
+        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        num_commands = 4
+        resampling_time = 8.  # time before command are changed[s]
+        heading_command = True  # if true: compute ang vel command from heading error
+
+        class ranges:
+            lin_vel_x = [-0.3, 0.6]   # min max [m/s]
+            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
+            ang_vel_yaw = [-0.3, 0.3] # min max [rad/s]
+            heading = [-3.14, 3.14]
+
+    class rewards:
+        base_height_target = 0.155
+        # distance between 2 leg? 0.17~0.18
+        min_dist = 0.1
+        max_dist = 0.3
+        # put some settings here for LLM parameter tuning
+        target_joint_pos_scale = 0.2   # rad
+        target_feet_height = 0.02        # m
+        cycle_time = 0.56                # sec
+
+        # Reference sign for each leg in compute_ref_state.
+        # Pikachu V025 left/right joint positive directions are aligned.
+        left_ref_sign =  1.0
+        right_ref_sign = 1.0
+        # if true negative total rewards are clipped at zero (avoids early termination problems)
+        only_positive_rewards = True
+        # tracking reward = exp(error*sigma)
+        tracking_sigma = 5
+        # tracking_sigma = 0.25
+        max_contact_force = 100  # Forces above this value are penalized
+
+        class scales:
+            # reference motion tracking
+            joint_pos = 5
+            # # 抬脚高度奖励
+            # feet_clearance = 2
+            # # 每只脚接触顺序
+            # feet_contact_number = 2
+            # hand_contact_number = 2
+            # # gait
+            # feet_air_time = 1.5
+            # # 脚滑奖励（惩罚）
+            # foot_slip = -0.8
+            # hand_slip = -0.8
+
+            # contact_no_vel = -1
+            # feet_distance = 0.2
+            # knee_distance = 0.2
+            # # contact
+            # feet_contact_forces = -0.01
+            # # vel tracking
+            # tracking_lin_vel = 1.5
+            # tracking_ang_vel = 1.1
+            # vel_mismatch_exp = 0.5  # lin_z; ang x,y
+            # low_speed = 0.5 #0.2
+            # track_vel_hard = 0.5 #0.5
+            # stand_still = -0.05
+
+            # base pos
+            # default_joint_pos = 0.1
+            default_joint_pos_left = 0.5
+            default_joint_pos_right = 0.5
+
+            orientation = 2
+            base_height = 0.2
+            base_acc = 0.2
+            # energy
+            action_smoothness = -0.002
+            torques = -1e-5
+            dof_vel = -5e-4
+            dof_acc = -1e-7
+            collision = -1.
+
+    class normalization:
+        class obs_scales:
+            lin_vel = 2.
+            ang_vel = 1.
+            dof_pos = 1.
+            dof_vel = 0.05
+            quat = 1.
+            height_measurements = 5.0
+        clip_observations = 18.
+        clip_actions = 18.
+
+
+class PikachuTransferCfgPPO(LeggedRobotCfgPPO):
+    seed = 5
+    runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
+
+    class policy:
+        init_noise_std = 1.0
+        actor_hidden_dims = [512, 256, 128]
+        critic_hidden_dims = [768, 256, 128]
+
+    class algorithm(LeggedRobotCfgPPO.algorithm):
+        entropy_coef = 0.001
+        learning_rate = 1e-5
+        num_learning_epochs = 2
+        gamma = 0.994
+        lam = 0.9
+        num_mini_batches = 4
+
+    class runner:
+        policy_class_name = 'ActorCritic'
+        algorithm_class_name = 'PPO'
+        num_steps_per_env = 60  # per iteration
+        max_iterations = 3001  # number of policy updates
+
+        # logging
+        save_interval = 100  # Please check for potential savings every `save_interval` iterations.
+        experiment_name = 'Pikachu_V025_Tran'
+        run_name = ''
+        # Load and resume
+        resume = False
+        load_run = -1  # -1 = last run
+        checkpoint = -1  # -1 = last saved model
+        resume_path = None  # updated from load_run and chkpt
+
+# =========刚体顺序=========
+# ['world', 'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link', 'left_elbow_ankle_link', 'left_hip_pitch_link', 'left_hip_roll_link', 'left_hip_yaw_link', 'left_knee_link', 'left_ankle_link', 'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link', 'right_elbow_ankle_link', 'right_hip_pitch_link', 'right_hip_roll_link', 'right_hip_yaw_link', 'right_knee_link', 'right_ankle_link']
+# =========DOF顺序=========
+# DOF数量:18
+ 
+# ['left_arm_pitch_joint', 'left_arm_roll_joint', 'left_arm_yaw_joint', 'left_elbow_ankle_joint', 'left_hip_pitch_joint', 'left_hip_roll_joint', 'left_hip_yaw_joint', 'left_knee_joint', 'left_ankle_joint', 'right_arm_pitch_joint', 'right_arm_roll_joint', 'right_arm_yaw_joint', 'right_elbow_ankle_joint', 'right_hip_pitch_joint', 'right_hip_roll_joint', 'right_hip_yaw_joint', 'right_knee_joint', 'right_ankle_joint']
+# DOF属性:
+# ('hasLimits', 'lower', 'upper', 'driveMode', 'velocity', 'effort', 'stiffness', 'damping', 'friction', 'armature')
+# [( True, -3.14, 1.05, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -2.44, 0.  , 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -2.44, 0.  , 3, 2., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.09, 0.26, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -0.26, 0.09, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -1.57, 0.  , 3, 3., 12.5, 0., 0.15, 0.01, 0.)
+#  ( True, -1.05, 0.52, 3, 2.,  9. , 0., 0.4 , 0.01, 0.)
+#  ( True, -1.05, 3.14, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 0.  , 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True, -1.57, 1.57, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 2.44, 3, 2.,  9. , 0., 0.1 , 0.01, 0.)
+#  ( True,  0.  , 2.44, 3, 2., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.26, 0.09, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True, -0.09, 0.26, 3, 1.,  9. , 0., 0.15, 0.01, 0.)
+#  ( True,  0.  , 1.57, 3, 3., 12.5, 0., 0.4 , 0.01, 0.)
+#  ( True, -0.52, 1.05, 3, 2.,  9. , 0., 0.15, 0.01, 0.)]
+
+# =========================

@@ -194,6 +194,9 @@ class LeggedRobot(BaseTask):
             self.update_command_curriculum(env_ids)
         
         # reset robot states
+        # if self.cfg.env.randomize_initial_state:
+            # self._reset_random_dofs(env_ids)
+        # else:
         self._reset_dofs(env_ids)
 
         self._reset_root_states(env_ids)
@@ -369,7 +372,7 @@ class LeggedRobot(BaseTask):
         torques = p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos) - d_gains * self.dof_vel
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
-    
+#------------------------- init dofs and root states -------------------------
     def _reset_dofs(self, env_ids):
         """ Resets DOF position and velocities of selected environmments
         Positions are randomly selected within 0.5:1.5 x default positions.
@@ -410,6 +413,7 @@ class LeggedRobot(BaseTask):
                                                      gymtorch.unwrap_tensor(self.root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
+# ------------------------- init dofs and root states -------------------------
 
     def _update_terrain_curriculum(self, env_ids):
         """ Implements the game-inspired curriculum.
@@ -499,10 +503,14 @@ class LeggedRobot(BaseTask):
 
         # joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
+        self.stand_default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
+
         for i in range(self.num_dofs):
             name = self.dof_names[i]
             # print(name)
             self.default_dof_pos[i] = self.cfg.init_state.default_joint_angles[name]
+            if bool(getattr(self.cfg.init_state, "stand_joint_angles", None)):
+                self.stand_default_dof_pos[i] = self.cfg.init_state.stand_joint_angles[name]
             found = False
             for dof_name in self.cfg.control.stiffness.keys():
 
@@ -519,8 +527,11 @@ class LeggedRobot(BaseTask):
         self.rand_push_force = torch.zeros((self.num_envs, 3), dtype=torch.float32, device=self.device)
         self.rand_push_torque = torch.zeros((self.num_envs, 3), dtype=torch.float32, device=self.device)
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
+        self.stand_default_dof_pos = self.stand_default_dof_pos.unsqueeze(0)
 
         self.default_joint_pd_target = self.default_dof_pos.clone()
+        self.stand_default_joint_pd_target = self.stand_default_dof_pos.clone()
+
         self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
         self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
         for _ in range(self.cfg.env.frame_stack):
@@ -649,6 +660,7 @@ class LeggedRobot(BaseTask):
         for name in self.cfg.asset.terminate_after_contacts_on:
             termination_contact_names.extend([s for s in body_names if name in s])
 
+        # initialize base state 
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
         start_pose = gymapi.Transform()
