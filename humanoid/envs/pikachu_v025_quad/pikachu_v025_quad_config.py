@@ -39,9 +39,9 @@ class PikachuQuadCfg(LeggedRobotCfg):
         # change the observation dim
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 65  # Updated for 18 actions (5 + 3*18 + 6 = 59)
+        num_single_obs = 66  # 6(sin/cos/vx/vy/vyaw/mode) + 3*18(q/dq/actions) + 6(ang_vel/euler)
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 97  # Updated for 18 actions (25 + 4*18 = 97)
+        single_num_privileged_obs = 98  # 6(cmd) + 4*18(dof) + 20(vel/euler/push/mass/contact)
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
         num_actions = 18  # 10 leg joints + 8 arm joints for quadrupedal walking
         num_envs = 4096
@@ -191,8 +191,9 @@ class PikachuQuadCfg(LeggedRobotCfg):
         action_noise = 0.02
 
     class commands(LeggedRobotCfg.commands):
-        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
-        num_commands = 4
+        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading, mode
+        # mode: 0=biped (双足), 1=quad (四足)
+        num_commands = 5
         resampling_time = 8.  # time before command are changed[s]
         heading_command = True  # if true: compute ang vel command from heading error
 
@@ -201,9 +202,11 @@ class PikachuQuadCfg(LeggedRobotCfg):
             lin_vel_y = [-0.3, 0.3]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3] # min max [rad/s]
             heading = [-3.14, 3.14]
+            mode = [0, 1]             # 0=biped, 1=quad
 
     class rewards:
-        base_height_target = 0.155
+        base_height_target = 0.155   # quad mode target base height (四足模式)
+        base_height_biped = 0.35     # biped mode target base height (双足模式)
         # distance between 2 leg? 0.17~0.18
         min_dist = 0.1
         max_dist = 0.3

@@ -81,6 +81,8 @@ class PikachuQuadEnv(LeggedRobot):
         self._validate_observation_dims()
         self._build_rigid_body_index_cache()
         self.last_feet_z = 0.05
+        # 键盘模式下的mode状态（0=双足, 1=四足），T键切换
+        self._keyboard_mode = 0
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
@@ -159,19 +161,21 @@ class PikachuQuadEnv(LeggedRobot):
         )
 
     def _validate_observation_dims(self):
-        expected_single_obs = 5 + 3 * self.num_actions + 6
-        expected_single_priv_obs = 25 + 4 * self.num_actions
+        # command_input: 6 (sin, cos, vx, vy, vyaw, mode)
+        expected_single_obs = 6 + 3 * self.num_actions + 6
+        # privileged: 6(cmd) + 4*n(dof) + 3+3+3+2+3+1+1+2+2=20
+        expected_single_priv_obs = 26 + 4 * self.num_actions
 
         # Validate with new action count (18 for quadrupedal)
         if self.cfg.env.num_single_obs != expected_single_obs:
             raise ValueError(
                 f"cfg.env.num_single_obs={self.cfg.env.num_single_obs} does not match "
-                f"expected {expected_single_obs} for num_actions={self.num_actions} (should be {5 + 3*18 + 6}=65)."
+                f"expected {expected_single_obs} for num_actions={self.num_actions} (should be {6 + 3*18 + 6}=66)."
             )
         if self.cfg.env.single_num_privileged_obs != expected_single_priv_obs:
             raise ValueError(
                 f"cfg.env.single_num_privileged_obs={self.cfg.env.single_num_privileged_obs} does not match "
-                f"expected {expected_single_priv_obs} for num_actions={self.num_actions} (should be {25 + 4*18}=97)."
+                f"expected {expected_single_priv_obs} for num_actions={self.num_actions} (should be {26 + 4*18}=98)."
             )
 
     def _push_robots(self):
@@ -215,48 +219,50 @@ class PikachuQuadEnv(LeggedRobot):
     def compute_ref_state(self):
         phase = self._get_phase()
         sin_pos = torch.sin(2 * torch.pi * phase)
-        self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
 
-        # Diagonal gait for quadrupedal walking:
-        # Left leg + Right arm swing together (diagonal 1)
-        # Right leg + Left arm swing together (diagonal 2)
-        # This encourages quadrupedal locomotion for 18 DOF model
-
-        # Left leg swing phase
+        # ---- 腿部参考（双足/四足共用，交替迈步） ----
         sin_pos_l = sin_pos.clone()
-        sin_pos_l[sin_pos_l < 0] = 0  # Only swing when sin_pos > 0
-        self.ref_dof_pos[:, self.left_ref_joint_indices[0]] = sin_pos_l * scale_1
-        self.ref_dof_pos[:, self.left_ref_joint_indices[1]] = sin_pos_l * scale_2
-        self.ref_dof_pos[:, self.left_ref_joint_indices[2]] = sin_pos_l * scale_1
-
-        # Right leg swing phase (opposite phase)
+        sin_pos_l[sin_pos_l < 0] = 0  # 左腿摆动阶段
         sin_pos_r = sin_pos.clone()
-        sin_pos_r[sin_pos_r > 0] = 0  # Only swing when sin_pos < 0
-        self.ref_dof_pos[:, self.right_ref_joint_indices[0]] = -sin_pos_r * scale_1
-        self.ref_dof_pos[:, self.right_ref_joint_indices[1]] = -sin_pos_r * scale_2
-        self.ref_dof_pos[:, self.right_ref_joint_indices[2]] = -sin_pos_r * scale_1
+        sin_pos_r[sin_pos_r > 0] = 0  # 右腿摆动阶段
 
-        # Left arm swing phase (opposite to left leg, diagonal with right leg)
+        # ---- 双足模式参考（手臂保持默认，仅腿部运动） ----
+        biped_ref = torch.zeros_like(self.dof_pos)
+        biped_ref[:, self.left_ref_joint_indices[0]] = sin_pos_l * scale_1
+        biped_ref[:, self.left_ref_joint_indices[1]] = sin_pos_l * scale_2
+        biped_ref[:, self.left_ref_joint_indices[2]] = sin_pos_l * scale_1
+        biped_ref[:, self.right_ref_joint_indices[0]] = -sin_pos_r * scale_1
+        biped_ref[:, self.right_ref_joint_indices[1]] = -sin_pos_r * scale_2
+        biped_ref[:, self.right_ref_joint_indices[2]] = -sin_pos_r * scale_1
+        # 双支撑相清零
+        biped_ref[torch.abs(sin_pos) < 0.1] = 0
+
+        # ---- 四足模式参考（对角步态：左腿+右臂同相，右腿+左臂同相） ----
+        quad_ref = biped_ref.clone()
+
+        # 左臂与右腿同相（sin_pos < 0 时摆动）
         sin_pos_left_arm = sin_pos.clone()
-        sin_pos_left_arm[sin_pos_left_arm > 0] = 0  # Only swing when sin_pos < 0
-        self.ref_dof_pos[:, self.left_arm_indices[0]] = -sin_pos_left_arm * scale_1  # Arm pitch
-        self.ref_dof_pos[:, self.left_arm_indices[1]] = sin_pos_left_arm * scale_1/2  # Arm roll
-        self.ref_dof_pos[:, self.left_arm_indices[2]] = sin_pos_left_arm * scale_1/2  # Arm yaw
-        self.ref_dof_pos[:, self.left_arm_indices[3]] = sin_pos_left_arm * scale_2  # Elbow
+        sin_pos_left_arm[sin_pos_left_arm > 0] = 0
+        quad_ref[:, self.left_arm_indices[0]] = -sin_pos_left_arm * scale_1   # pitch
+        quad_ref[:, self.left_arm_indices[1]] =  sin_pos_left_arm * scale_1/2  # roll
+        quad_ref[:, self.left_arm_indices[2]] =  sin_pos_left_arm * scale_1/2  # yaw
+        quad_ref[:, self.left_arm_indices[3]] =  sin_pos_left_arm * scale_2   # elbow
 
-        # Right arm swing phase (diagonal with left leg)
+        # 右臂与左腿同相（sin_pos > 0 时摆动）
         sin_pos_right_arm = sin_pos.clone()
-        sin_pos_right_arm[sin_pos_right_arm < 0] = 0  # Only swing when sin_pos > 0
-        self.ref_dof_pos[:, self.right_arm_indices[0]] = sin_pos_right_arm * scale_1  # Arm pitch
-        self.ref_dof_pos[:, self.right_arm_indices[1]] = -sin_pos_right_arm * scale_1/2  # Arm roll
-        self.ref_dof_pos[:, self.right_arm_indices[2]] = -sin_pos_right_arm * scale_1/2  # Arm yaw
-        self.ref_dof_pos[:, self.right_arm_indices[3]] = -sin_pos_right_arm * scale_2  # Elbow
+        sin_pos_right_arm[sin_pos_right_arm < 0] = 0
+        quad_ref[:, self.right_arm_indices[0]] =  sin_pos_right_arm * scale_1   # pitch
+        quad_ref[:, self.right_arm_indices[1]] = -sin_pos_right_arm * scale_1/2  # roll
+        quad_ref[:, self.right_arm_indices[2]] = -sin_pos_right_arm * scale_1/2  # yaw
+        quad_ref[:, self.right_arm_indices[3]] = -sin_pos_right_arm * scale_2   # elbow
 
-        # Double support phase (when close to zero phase)
-        self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
+        quad_ref[torch.abs(sin_pos) < 0.1] = 0
 
+        # ---- 按mode混合参考（0=双足, 1=四足） ----
+        mode = self.commands[:, 4].unsqueeze(1)  # (num_envs, 1)
+        self.ref_dof_pos = biped_ref * (1.0 - mode) + quad_ref * mode
         self.ref_action = 2 * self.ref_dof_pos
 
 
@@ -296,10 +302,10 @@ class PikachuQuadEnv(LeggedRobot):
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         num_actions = self.num_actions
-        action_offset = 5
+        action_offset = 6  # command_input now 6 dims: sin,cos,vx,vy,vyaw,mode
         ang_vel_offset = action_offset + 3 * num_actions
         euler_offset = ang_vel_offset + 3
-        noise_vec[0: 5] = 0.  # commands
+        noise_vec[0: 6] = 0.  # commands + mode (no noise)
         noise_vec[action_offset: action_offset + num_actions] = noise_scales.dof_pos * self.obs_scales.dof_pos
         noise_vec[action_offset + num_actions: action_offset + 2 * num_actions] = noise_scales.dof_vel * self.obs_scales.dof_vel
         noise_vec[action_offset + 2 * num_actions: action_offset + 3 * num_actions] = 0.  # previous actions
@@ -307,6 +313,14 @@ class PikachuQuadEnv(LeggedRobot):
         noise_vec[euler_offset: euler_offset + 3] = noise_scales.quat * self.obs_scales.quat         # euler
         return noise_vec
 
+
+    def _resample_commands(self, env_ids):
+        """覆写基类方法，增加mode随机采样（0=双足, 1=四足，各50%概率）"""
+        super()._resample_commands(env_ids)
+        if len(env_ids) == 0:
+            return
+        mode_rand = torch.rand(len(env_ids), device=self.device)
+        self.commands[env_ids, 4] = (mode_rand > 0.5).float()
 
     def step(self, actions):
         if self.cfg.env.use_ref_actions:
@@ -322,6 +336,13 @@ class PikachuQuadEnv(LeggedRobot):
     def compute_observations(self):
 
         if self._get_commands_from_keyboard:
+            # ---- T键切换双足/四足模式 ----
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
+                    self._keyboard_mode = 1 - self._keyboard_mode
+                    mode_name = "四足(QUAD)" if self._keyboard_mode == 1 else "双足(BIPED)"
+                    print(f"[Mode切换] → {mode_name}  command[4]={self._keyboard_mode}")
+
             keys = pygame.key.get_pressed()
             lin_vel_x = 0
             lin_vel_y = 0
@@ -356,9 +377,10 @@ class PikachuQuadEnv(LeggedRobot):
             self.commands[:, 1] = lin_vel_y*command_scale
             self.commands[:, 2] = 0 # ang_vel*command_scale
             self.commands[:, 3] = self.heading_target
-            
+            # 每步强制写入当前键盘模式（优先级高于_resample_commands）
+            self.commands[:, 4] = float(self._keyboard_mode)
+
             # print(self.commands[0])
-            pygame.event.pump()  # process event queue
 
         phase = self._get_phase()
         self.compute_ref_state()
@@ -370,7 +392,8 @@ class PikachuQuadEnv(LeggedRobot):
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
 
         self.command_input = torch.cat(
-            (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
+            (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale,
+             self.commands[:, 4:5]), dim=1)  # 6 dims: sin,cos,vx,vy,vyaw,mode
         
         q = (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos
         dq = self.dof_vel * self.obs_scales.dof_vel
@@ -378,7 +401,7 @@ class PikachuQuadEnv(LeggedRobot):
         diff = self.dof_pos - self.ref_dof_pos
 
         self.privileged_obs_buf = torch.cat((
-            self.command_input,  # 2 + 3
+            self.command_input,  # 6 (sin,cos,vx,vy,vyaw,mode)
             (self.dof_pos - self.default_joint_pd_target) * \
             self.obs_scales.dof_pos,  # num_actions
             self.dof_vel * self.obs_scales.dof_vel,  # num_actions
@@ -396,7 +419,7 @@ class PikachuQuadEnv(LeggedRobot):
         ), dim=-1)
 
         obs_buf = torch.cat((
-            self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
+            self.command_input,  # 6 (sin,cos,vx,vy,vyaw,mode)
             q,    # num_actions
             dq,  # num_actions
             self.actions,   # num_actions
@@ -519,16 +542,15 @@ class PikachuQuadEnv(LeggedRobot):
 
     def _reward_default_arm_joint_pos(self):
         """
-        Calculates the reward for keeping arm joint positions close to default positions.
-        This encourages arms to maintain a posture suitable for quadrupedal walking.
+        双足模式：鼓励手臂关节保持默认位置（自然下垂）。
+        四足模式下不激活，手臂姿态由joint_pos奖励引导。
         """
+        biped_mask = (self.commands[:, 4] < 0.5).float()
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        # Extract arm joint differences for all 4 joints per arm
         left_arm_diff = joint_diff[:, list(self.left_arm_indices)]
         right_arm_diff = joint_diff[:, list(self.right_arm_indices)]
         arm_diff = torch.norm(left_arm_diff, dim=1) + torch.norm(right_arm_diff, dim=1)
-        # Encourage small deviations from default arm positions
-        return torch.exp(-arm_diff * 50) - 0.01 * torch.norm(joint_diff, dim=1)
+        return (torch.exp(-arm_diff * 50) - 0.01 * torch.norm(joint_diff, dim=1)) * biped_mask
 
     def _reward_feet_distance(self):
         """
@@ -668,15 +690,19 @@ class PikachuQuadEnv(LeggedRobot):
 
     def _reward_base_height(self):
         """
-        Calculates the reward based on the robot's base height. Penalizes deviation from a target base height.
-        The reward is computed based on the height difference between the robot's base and the average height 
-        of its feet when they are in contact with the ground.
+        双足模式目标高度 ~0.35m（直立），四足模式目标高度 ~0.155m（俯身）。
         """
         stance_mask = self._get_gait_phase()
         measured_heights = torch.sum(
             self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
         base_height = self.root_states[:, 2] - (measured_heights - 0.05)
-        return torch.exp(-torch.abs(base_height - self.cfg.rewards.base_height_target) * 100)
+
+        mode = self.commands[:, 4]
+        biped_mask = (mode < 0.5).float()
+        quad_mask  = (mode >= 0.5).float()
+        target = self.cfg.rewards.base_height_biped * biped_mask + \
+                 self.cfg.rewards.base_height_target * quad_mask
+        return torch.exp(-torch.abs(base_height - target) * 100)
 
     def _reward_base_acc(self):
         """
@@ -880,54 +906,39 @@ class PikachuQuadEnv(LeggedRobot):
 
     def _reward_quadrupedal_posture(self):
         """
-        鼓励四足姿态，惩罚双足直立姿态
-        Encourages quadrupedal posture by rewarding when the robot lowers its body 
-        and uses arms for locomotion, penalizes bipedal stance.
+        仅在四足模式(mode=1)激活：鼓励降低躯干高度并使用手臂。
         """
-        # Reward lower body height (indicating quadrupedal stance)
-        body_height_reward = torch.exp(-torch.abs(self.root_states[:, 2] - 0.1) * 10)  # Target ~0.1m height for quadrupedal
-        
-        # Reward arm usage by checking if arm joints are actively moving from default position
-        arm_usage = torch.norm(self.dof_pos[:, list(self.left_arm_indices + self.right_arm_indices)] - 
+        quad_mask = (self.commands[:, 4] >= 0.5).float()
+        body_height_reward = torch.exp(-torch.abs(self.root_states[:, 2] - 0.1) * 10)
+        arm_usage = torch.norm(self.dof_pos[:, list(self.left_arm_indices + self.right_arm_indices)] -
                                self.default_joint_pd_target[:, list(self.left_arm_indices + self.right_arm_indices)], dim=1)
-        arm_reward = torch.tanh(arm_usage * 2.0)  # Encourage using arms
-        
-        return body_height_reward * 0.5 + arm_reward * 0.3
+        arm_reward = torch.tanh(arm_usage * 2.0)
+        return (body_height_reward * 0.5 + arm_reward * 0.3) * quad_mask
 
     def _reward_arms_contact(self):
         """
-        鼓励手臂与地面接触，支持四足行走
-        Rewards contact of arms with ground to encourage quadrupedal locomotion.
+        仅在四足模式(mode=1)激活：鼓励手肘接触地面。
         """
-        # 使用预缓存的刚体索引
+        quad_mask = (self.commands[:, 4] >= 0.5).float()
         if self.left_elbow_index >= 0 and self.right_elbow_index >= 0:
-            # 获取手臂末端的位置
             left_arm_pos = self.rigid_state[:, self.left_elbow_index, 2]
             right_arm_pos = self.rigid_state[:, self.right_elbow_index, 2]
-            
-            # Calculate contact based on height (lower = more likely in contact)
-            left_arm_contact = torch.clamp(0.15 - left_arm_pos, 0, 0.15)  # 0.15m is approx ground contact height
+            left_arm_contact = torch.clamp(0.15 - left_arm_pos, 0, 0.15)
             right_arm_contact = torch.clamp(0.15 - right_arm_pos, 0, 0.15)
-            
-            # Also check contact forces if available
             left_arm_contact_force = self.contact_forces[:, self.left_elbow_index, 2] > 1.0
             right_arm_contact_force = self.contact_forces[:, self.right_elbow_index, 2] > 1.0
-            
-            # Combine position-based and force-based contact detection
             contact_reward = (left_arm_contact + right_arm_contact) * 2.0 + \
                              left_arm_contact_force.float() + right_arm_contact_force.float()
         else:
-            # 如果索引无效，则返回零奖励
             contact_reward = torch.zeros(self.num_envs, device=self.device)
-        
-        return contact_reward
+        return contact_reward * quad_mask
 
     def _reward_body_orientation_for_quadruped(self):
         """
-        鼓励身体保持水平姿态，适合四足行走
-        Encourages body to stay level, which is more appropriate for quadrupedal locomotion.
+        仅在四足模式(mode=1)激活：鼓励身体保持水平。
+        双足模式下由_reward_orientation统一处理。
         """
-        # Reward keeping body level (z-axis up)
+        quad_mask = (self.commands[:, 4] >= 0.5).float()
         target_orientation = torch.zeros_like(self.projected_gravity[:, :2])
         orientation_error = torch.norm(self.projected_gravity[:, :2] - target_orientation, dim=1)
-        return torch.exp(-orientation_error * 10)
+        return torch.exp(-orientation_error * 10) * quad_mask
