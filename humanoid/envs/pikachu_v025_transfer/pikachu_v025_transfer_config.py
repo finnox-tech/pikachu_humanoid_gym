@@ -127,23 +127,40 @@ class PikachuTransferCfg(LeggedRobotCfg):
         #    'right_arm_pitch_joint' : 1.77,
         #    'right_arm_roll_joint' : 0.0,
 
+        #    'left_hip_yaw_joint' : 0. ,   
+        #    'left_hip_roll_joint' : 0,               
+        #    'left_hip_pitch_joint' : -0.3,         
+        #    'left_knee_joint' : -1.12,       
+        #    'left_ankle_joint' : -0.8,    
+
+        #    'right_hip_yaw_joint' : 0., 
+        #    'right_hip_roll_joint' : 0, 
+        #    'right_hip_pitch_joint' : 0.3,                                       
+        #    'right_knee_joint' : 1.12,                                             
+        #    'right_ankle_joint' : 0.8,    
+
+        #    'left_arm_pitch_joint' : 0,
+        #    'left_arm_roll_joint' : 0.0,
+        #    'right_arm_pitch_joint' : 0,
+        #    'right_arm_roll_joint' : 0.0,
+
+
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -0.3,         
-           'left_knee_joint' : -1.12,       
-           'left_ankle_joint' : -0.8,    
+           'left_hip_pitch_joint' : 0,         
+           'left_knee_joint' : 0,       
+           'left_ankle_joint' : 0,    
 
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 0.3,                                       
-           'right_knee_joint' : 1.12,                                             
-           'right_ankle_joint' : 0.8,    
+           'right_hip_pitch_joint' : 0,                                       
+           'right_knee_joint' : 0,                                             
+           'right_ankle_joint' : 0,    
 
            'left_arm_pitch_joint' : 0,
-           'left_arm_roll_joint' : 0.0,
+           'left_arm_roll_joint' : 0,
            'right_arm_pitch_joint' : 0,
-           'right_arm_roll_joint' : 0.0,
-
+           'right_arm_roll_joint' : 0,
         }
         
         stand_joint_angles = {  
