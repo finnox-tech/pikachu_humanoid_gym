@@ -1117,3 +1117,16 @@ class PikachuTransferEnv(LeggedRobot):
 
         return joint_reward * quat_reward
 
+    def _reward_action_magnitude(self):
+        """
+        惩罚动作绝对幅度（action 输出值的平方和）。
+
+        与 action_smoothness 的区别：
+        - action_smoothness 惩罚相邻帧的"变化速率"（动作导数）
+        - action_magnitude  惩罚当前帧的"绝对大小"（动作幅值）
+
+        两者配合使用：前者抑制抖动，后者压制大幅度动作，
+        共同引导策略学习小而平滑的控制信号。
+        """
+        return torch.sum(torch.square(self.actions), dim=1)
+

@@ -210,7 +210,8 @@ class PikachuTransferCfg(LeggedRobotCfg):
                      }  # [N*m/rad]  
         
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.25
+        # 降低至 0.15：限制每步最大关节位移，使策略倾向于小幅平滑调整
+        action_scale = 0.15
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 10  # 100hz
 
@@ -238,9 +239,9 @@ class PikachuTransferCfg(LeggedRobotCfg):
         friction_range = [0.1, 2.0]
         randomize_base_mass = True
         added_mass_range = [-0.1, 0.1]
-        push_robots = False
+        push_robots = True   # 开启随机推力扰动，训练抗干扰鲁棒性
         push_interval_s = 4
-        max_push_vel_xy = 0.2
+        max_push_vel_xy = 0.3
         max_push_ang_vel = 0.4
         # dynamic randomization
         action_delay = 0.5
@@ -310,9 +311,11 @@ class PikachuTransferCfg(LeggedRobotCfg):
             collision = -1.0
 
             # ── 能量效率与动作平滑 ────────────────────────────────────────
-            action_smoothness = -0.002
-            torques = -1e-5
-            # 加强关节速度惩罚：抑制甩腿行为（原 -5e-4 提升 10x）
+            # 惩罚相邻帧动作变化速率（抑制抖动）
+            action_smoothness = -0.005
+            # 惩罚当前帧动作绝对幅度（压制大幅度激进动作）
+            action_magnitude = -0.01
+            torques = -2e-5
             dof_vel = -5e-3
             dof_acc = -1e-7
             # 惩罚机体角速度：防止快速转身/翻滚绕过物理约束
