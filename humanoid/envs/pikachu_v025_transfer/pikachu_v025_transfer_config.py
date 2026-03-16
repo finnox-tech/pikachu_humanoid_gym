@@ -60,14 +60,15 @@ class PikachuTransferCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof_quad.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof.urdf'
 
         name = "Pikachu_V0025"
         foot_name = "ankle"
         hand_name = "arm_roll"
         knee_name = "knee"
 
-        terminate_after_contacts_on = ['world', 'base_link']  # episode is terminated when contact is detected on these links
+        # terminate_after_contacts_on = ['world', 'base_link']  # episode is terminated when contact is detected on these links
+        terminate_after_contacts_on = []
         penalize_contacts_on = ["world","base_link"]
         self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
@@ -107,27 +108,44 @@ class PikachuTransferCfg(LeggedRobotCfg):
         pos = [0.0, 0.0, 0.15]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-          'left_hip_yaw_joint' : 0. ,   
+        #   'left_hip_yaw_joint' : 0. ,   
+        #    'left_hip_roll_joint' : 0,               
+        #    'left_hip_pitch_joint' : -2.0,         
+        #    'left_knee_joint' : -1.0,       
+        #    'left_ankle_joint' : -0.7,     
+
+        #    'right_hip_yaw_joint' : 0., 
+        #    'right_hip_roll_joint' : 0, 
+        #    'right_hip_pitch_joint' : 2.0,                                       
+        #    'right_knee_joint' : 1.0,                                             
+        #    'right_ankle_joint' : 0.7,     
+
+        #    'left_arm_pitch_joint' : -1.77,
+        #    'left_arm_roll_joint' : 0.0,
+
+        #    'right_arm_pitch_joint' : 1.77,
+        #    'right_arm_roll_joint' : 0.0,
+
+           'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -2.0,         
-           'left_knee_joint' : -1.0,       
-           'left_ankle_joint' : -0.7,     
+           'left_hip_pitch_joint' : -0.3,         
+           'left_knee_joint' : -1.12,       
+           'left_ankle_joint' : -0.8,    
 
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 2.0,                                       
-           'right_knee_joint' : 1.0,                                             
-           'right_ankle_joint' : 0.7,     
+           'right_hip_pitch_joint' : 0.3,                                       
+           'right_knee_joint' : 1.12,                                             
+           'right_ankle_joint' : 0.8,    
 
-           'left_arm_pitch_joint' : -1.77,
+           'left_arm_pitch_joint' : 0,
            'left_arm_roll_joint' : 0.0,
-
-           'right_arm_pitch_joint' : 1.77,
+           'right_arm_pitch_joint' : 0,
            'right_arm_roll_joint' : 0.0,
 
         }
         
-        stand_default_joint_angles = {  # = target angles [rad] when action = 0.0
+        stand_joint_angles = {  
          'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
            'left_hip_pitch_joint' : -0.3,         
