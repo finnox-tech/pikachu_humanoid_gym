@@ -567,6 +567,12 @@ class PikachuTransferEnv(LeggedRobot):
             self.critic_history[i][env_ids] *= 0
         self.stand_up_timer[env_ids] = 0.0
 
+    def check_termination(self):
+        """继承 base 终止条件，额外添加：高度超过 base_height_target × 1.5 时强制重置。"""
+        super().check_termination()
+        height_limit = self.cfg.rewards.base_height_target * 1.5
+        self.reset_buf |= self.root_states[:, 2] > height_limit
+
 # ================================================ Rewards ================================================== #
     # reference motion tracking
     def _reward_joint_pos(self):
@@ -1048,4 +1054,29 @@ class PikachuTransferEnv(LeggedRobot):
         upward_vel = base_z_vel.clamp(0, 1.0)  # 只奖励向上，不惩罚向下
 
         return upward_vel * not_standing.float()
+
+    def _reward_airborne_penalty(self):
+        """
+        惩罚机器人腾空（脚和手均无地面接触）的行为。
+        防止 base_upward_vel 奖励导致机器人学会直接跳起/飞起而非撑地站立。
+
+        当双脚和手部均无接触力时，给出与高度成正比的惩罚：
+        离地越高惩罚越大，直接压制飞起行为。
+        """
+        foot_contact = torch.any(
+            self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force, dim=1
+        )
+        if self.hand_indices.numel() > 0:
+            hand_contact = torch.any(
+                self.contact_forces[:, self.hand_indices, 2] > self.cfg.env.hand_contact_force, dim=1
+            )
+        else:
+            hand_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+
+        # 完全腾空：手脚均无接触
+        airborne = ~foot_contact & ~hand_contact
+
+        # 惩罚强度与超出正常站立高度的程度成正比
+        excess_height = (self.root_states[:, 2] - self.cfg.rewards.base_height_target).clamp(0)
+        return airborne.float() * (1.0 + excess_height * 10.0)
 
