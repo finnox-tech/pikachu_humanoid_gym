@@ -84,6 +84,14 @@ class PikachuTransferEnv(LeggedRobot):
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.hand_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.stand_up_timer = torch.zeros(self.num_envs, device=self.device)
+        # 预计算站立目标关节角度张量（来自 cfg.init_state.stand_joint_angles）
+        dof_name_to_idx = {name: i for i, name in enumerate(self.dof_names)}
+        self.stand_joint_target = torch.zeros(self.num_dofs, device=self.device)
+        for name, angle in self.cfg.init_state.stand_joint_angles.items():
+            if name in dof_name_to_idx:
+                self.stand_joint_target[dof_name_to_idx[name]] = angle
+        # 预计算站立目标四元数 [0,0,0,1]（直立朝向）
+        self.stand_quat_target = torch.tensor([0., 0., 0., 1.], device=self.device)
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
 
@@ -1079,4 +1087,33 @@ class PikachuTransferEnv(LeggedRobot):
         # 惩罚强度与超出正常站立高度的程度成正比
         excess_height = (self.root_states[:, 2] - self.cfg.rewards.base_height_target).clamp(0)
         return airborne.float() * (1.0 + excess_height * 10.0)
+
+    def _reward_base_ang_vel_penalty(self):
+        """
+        惩罚机体（底盘）过快的角速度。
+        防止机器人通过快速转身/翻滚等不符合物理约束的动作来获得奖励。
+        对 roll/pitch/yaw 三轴角速度的平方和惩罚。
+        """
+        return torch.sum(torch.square(self.base_ang_vel), dim=1)
+
+    def _reward_stand_pose(self):
+        """
+        奖励机器人关节角度和机体朝向同时接近站立目标姿态。
+
+        两个分量：
+        1. 关节角度接近 stand_joint_angles（各关节目标角）
+        2. 机体四元数接近 [0,0,0,1]（直立朝向）
+
+        两者乘积确保只有同时满足才能获得高分，避免只调关节不调姿态。
+        """
+        # 关节角度误差：L2 范数，exp 核
+        joint_diff = self.dof_pos - self.stand_joint_target.unsqueeze(0)
+        joint_reward = torch.exp(-torch.sum(torch.square(joint_diff), dim=1) * 2.0)
+
+        # 四元数朝向误差：点积越接近 1 表示方向越一致
+        # base_quat shape: (num_envs, 4)，target: (4,)
+        quat_dot = torch.sum(self.base_quat * self.stand_quat_target.unsqueeze(0), dim=1).abs()
+        quat_reward = torch.exp(-(1.0 - quat_dot) * 10.0)
+
+        return joint_reward * quat_reward
 

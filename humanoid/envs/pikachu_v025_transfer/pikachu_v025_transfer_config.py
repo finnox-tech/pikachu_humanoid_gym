@@ -286,6 +286,8 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # 全程连续梯度：-projected_gravity[z]，趴着时≈0，直立时≈+1
             # 解决 stand_up/orientation 在远离目标时梯度消失的问题
             upright_progress = 3.0
+            # 关节角 + 机体四元数同时接近 stand_joint_angles / rot=[0,0,0,1]
+            stand_pose = 2.0
             # 保持底盘水平（euler + projected_gravity 双重检测）
             orientation = 2.0
             # 保持底盘高度接近 base_height_target
@@ -313,6 +315,8 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # 加强关节速度惩罚：抑制甩腿行为（原 -5e-4 提升 10x）
             dof_vel = -5e-3
             dof_acc = -1e-7
+            # 惩罚机体角速度：防止快速转身/翻滚绕过物理约束
+            base_ang_vel_penalty = -0.1
 
             # ── 以下为步态相关奖励，站起任务阶段暂时关闭 ─────────────────
             # 脚部抬离高度（行走步态）
