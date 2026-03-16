@@ -105,8 +105,10 @@ class PikachuTransferCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.045]
-        rot = [0, 0.7071, 0, 0.7071]  # 绕Y轴旋转90度
+        # pos = [0.0, 0.0, 0.045]
+        pos = [0.0, 0.0, 0.15]
+
+        # rot = [0, 0.7071, 0, 0.7071]  # 绕Y轴旋转90度
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
         #   'left_hip_yaw_joint' : 0. ,   
