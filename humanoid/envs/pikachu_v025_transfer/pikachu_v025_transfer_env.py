@@ -986,4 +986,18 @@ class PikachuTransferEnv(LeggedRobot):
 
         return instant_reward * (1.0 + time_bonus) - prone_penalty
 
+    def _reward_upright_progress(self):
+        """
+        全程连续梯度奖励，解决稀疏奖励问题。
+
+        原理：projected_gravity 是重力在机器人 body 系中的单位向量。
+          - 完全直立时：projected_gravity ≈ [0, 0, -1]，-z[2] ≈ +1
+          - 水平趴卧时：projected_gravity ≈ [0, ±1, 0]，-z[2] ≈ 0
+          - 完全倒置时：projected_gravity ≈ [0, 0, +1]，-z[2] ≈ -1
+
+        无论机器人处于何种姿态，本函数都提供非零梯度，
+        引导策略学习从趴卧旋转到直立，弥补 stand_up/orientation
+        在远离目标时梯度消失的问题。
+        """
+        return -self.projected_gravity[:, 2]
 

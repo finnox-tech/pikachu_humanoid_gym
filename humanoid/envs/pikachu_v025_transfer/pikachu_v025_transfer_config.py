@@ -260,6 +260,9 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # ── 核心站立目标 ──────────────────────────────────────────────
             # 综合奖励：站立姿态 × 高度，并在连续站立时给予时间加成；趴下时给出惩罚
             stand_up = 2.0
+            # 全程连续梯度：-projected_gravity[z]，趴着时≈0，直立时≈+1
+            # 解决 stand_up/orientation 在远离目标时梯度消失的问题
+            upright_progress = 3.0
             # 保持底盘水平（euler + projected_gravity 双重检测）
             orientation = 2.0
             # 保持底盘高度接近 base_height_target
@@ -267,9 +270,9 @@ class PikachuTransferCfg(LeggedRobotCfg):
 
             # ── 稳定性 ────────────────────────────────────────────────────
             # 双脚间距保持合理范围
-            feet_distance = 0.2
+            # feet_distance = 0.2
             # 双膝间距保持合理范围
-            knee_distance = 0.2
+            # knee_distance = 0.2
             # 底盘加速度（惩罚剧烈晃动）
             base_acc = 0.2
             # 脚部接触力不超限
