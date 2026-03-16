@@ -67,7 +67,7 @@ class PikachuTransferCfg(LeggedRobotCfg):
         hand_name = "arm_roll"
         knee_name = "knee"
 
-        terminate_after_contacts_on = ['base_link']  # episode is terminated when contact is detected on these links
+        terminate_after_contacts_on = []  # episode is terminated when contact is detected on these links
         # terminate_after_contacts_on = []
         penalize_contacts_on = ["world","base_link"]
         self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
@@ -131,42 +131,42 @@ class PikachuTransferCfg(LeggedRobotCfg):
 
 
 
-           'left_hip_yaw_joint' : 0. ,   
-           'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -0.3,         
-           'left_knee_joint' : -1.12,       
-           'left_ankle_joint' : -0.8,    
-
-           'right_hip_yaw_joint' : 0., 
-           'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 0.3,                                       
-           'right_knee_joint' : 1.12,                                             
-           'right_ankle_joint' : 0.8,    
-
-           'left_arm_pitch_joint' : 0,
-           'left_arm_roll_joint' : 0.0,
-           'right_arm_pitch_joint' : 0,
-           'right_arm_roll_joint' : 0.0,
-
-
-
-
         #    'left_hip_yaw_joint' : 0. ,   
         #    'left_hip_roll_joint' : 0,               
-        #    'left_hip_pitch_joint' : 0,         
-        #    'left_knee_joint' : 0,       
-        #    'left_ankle_joint' : 0,    
+        #    'left_hip_pitch_joint' : -0.3,         
+        #    'left_knee_joint' : -1.12,       
+        #    'left_ankle_joint' : -0.8,    
 
         #    'right_hip_yaw_joint' : 0., 
         #    'right_hip_roll_joint' : 0, 
-        #    'right_hip_pitch_joint' : 0,                                       
-        #    'right_knee_joint' : 0,                                             
-        #    'right_ankle_joint' : 0,    
+        #    'right_hip_pitch_joint' : 0.3,                                       
+        #    'right_knee_joint' : 1.12,                                             
+        #    'right_ankle_joint' : 0.8,    
 
         #    'left_arm_pitch_joint' : 0,
-        #    'left_arm_roll_joint' : 0,
+        #    'left_arm_roll_joint' : 0.0,
         #    'right_arm_pitch_joint' : 0,
-        #    'right_arm_roll_joint' : 0,
+        #    'right_arm_roll_joint' : 0.0,
+
+
+
+
+           'left_hip_yaw_joint' : 0. ,   
+           'left_hip_roll_joint' : 0,               
+           'left_hip_pitch_joint' : 0,         
+           'left_knee_joint' : 0,       
+           'left_ankle_joint' : 0,    
+
+           'right_hip_yaw_joint' : 0., 
+           'right_hip_roll_joint' : 0, 
+           'right_hip_pitch_joint' : 0,                                       
+           'right_knee_joint' : 0,                                             
+           'right_ankle_joint' : 0,    
+
+           'left_arm_pitch_joint' : 0,
+           'left_arm_roll_joint' : 0,
+           'right_arm_pitch_joint' : 0,
+           'right_arm_roll_joint' : 0,
         }
         
         stand_joint_angles = {  
@@ -291,11 +291,13 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # 保持底盘高度接近 base_height_target
             base_height = 0.5
 
+            # ── 手脚支撑引导 ──────────────────────────────────────────────
+            # 未站立时奖励手脚同时撑地，已站立时奖励手部离地
+            support_contact = 1.5
+            # 未站立时奖励底盘向上线速度，激励主动发力抬身
+            base_upward_vel = 2.0
+
             # ── 稳定性 ────────────────────────────────────────────────────
-            # 双脚间距保持合理范围
-            # feet_distance = 0.2
-            # 双膝间距保持合理范围
-            # knee_distance = 0.2
             # 底盘加速度（惩罚剧烈晃动）
             base_acc = 0.2
             # 脚部接触力不超限
@@ -306,7 +308,8 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # ── 能量效率与动作平滑 ────────────────────────────────────────
             action_smoothness = -0.002
             torques = -1e-5
-            dof_vel = -5e-4
+            # 加强关节速度惩罚：抑制甩腿行为（原 -5e-4 提升 10x）
+            dof_vel = -5e-3
             dof_acc = -1e-7
 
             # ── 以下为步态相关奖励，站起任务阶段暂时关闭 ─────────────────

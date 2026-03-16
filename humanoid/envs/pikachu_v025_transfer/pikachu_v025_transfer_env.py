@@ -1001,3 +1001,51 @@ class PikachuTransferEnv(LeggedRobot):
         """
         return -self.projected_gravity[:, 2]
 
+    def _reward_support_contact(self):
+        """
+        当机器人尚未站立时，奖励手部和脚部同时接触地面（支撑姿态）。
+        解决机器人靠甩腿而非用手脚撑地站起的问题。
+
+        逻辑：
+        - 未站立状态（高度低 或 姿态倾斜）：手脚都接触地面才给正奖励
+        - 已站立状态：手部离地奖励（过渡到纯脚站立）
+        """
+        base_height = self.root_states[:, 2]
+        gravity_xy_norm = torch.norm(self.projected_gravity[:, :2], dim=1)
+        is_standing = (base_height > self.cfg.rewards.base_height_target * 0.75) & (gravity_xy_norm < 0.3)
+
+        # 脚部接触
+        foot_contact = torch.any(
+            self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force, dim=1
+        )
+        # 手部接触
+        if self.hand_indices.numel() > 0:
+            hand_contact = torch.any(
+                self.contact_forces[:, self.hand_indices, 2] > self.cfg.env.hand_contact_force, dim=1
+            )
+        else:
+            hand_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+
+        # 未站立时：手脚同时撑地 → +1，否则 0
+        support_reward = (foot_contact & hand_contact).float()
+        # 已站立时：手离地 → +1（鼓励完成支撑到直立的过渡）
+        upright_reward = (~hand_contact).float()
+
+        return torch.where(is_standing, upright_reward, support_reward)
+
+    def _reward_base_upward_vel(self):
+        """
+        当机器人尚未站立时，奖励底盘向上的线速度。
+        直接激励机器人主动用手脚发力向上撑起身体，而非被动地摆动关节。
+        已站立后此奖励自动归零（z 速度趋于 0）。
+        """
+        base_height = self.root_states[:, 2]
+        gravity_xy_norm = torch.norm(self.projected_gravity[:, :2], dim=1)
+        not_standing = ~((base_height > self.cfg.rewards.base_height_target * 0.75) & (gravity_xy_norm < 0.3))
+
+        # 世界系中底盘 z 方向线速度（正值 = 向上）
+        base_z_vel = self.root_states[:, 9]  # lin_vel z in world frame
+        upward_vel = base_z_vel.clamp(0, 1.0)  # 只奖励向上，不惩罚向下
+
+        return upward_vel * not_standing.float()
+
