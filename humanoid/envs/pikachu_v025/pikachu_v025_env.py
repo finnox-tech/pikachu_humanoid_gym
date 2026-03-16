@@ -431,6 +431,9 @@ class PikachuEnv(LeggedRobot):
             # print("right:", right_error.item())
 
             # print(torch.sum(torch.abs(self.dof_pos - self.default_joint_pd_target), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1))
+
+            # print(torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1))
+
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):

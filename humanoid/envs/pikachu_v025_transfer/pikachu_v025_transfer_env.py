@@ -83,6 +83,7 @@ class PikachuTransferEnv(LeggedRobot):
         self.last_hand_z = 0.05
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.hand_height = torch.zeros((self.num_envs, 2), device=self.device)
+        self.stand_up_timer = torch.zeros(self.num_envs, device=self.device)
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
 
@@ -548,6 +549,14 @@ class PikachuTransferEnv(LeggedRobot):
             self.last_hand_z = hands_z
 
             # print(self.hand_height)
+
+            quat_mismatch = torch.exp(-torch.sum(torch.abs(self.base_euler_xyz[:, :2]), dim=1) * 10)
+            orientation = torch.exp(-torch.norm(self.projected_gravity[:, :2], dim=1) * 20)
+            # print((quat_mismatch + orientation) / 2)
+
+            # print(torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1))
+            # print(self.projected_gravity[:, :2])
+
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
@@ -556,6 +565,7 @@ class PikachuTransferEnv(LeggedRobot):
             self.obs_history[i][env_ids] *= 0
         for i in range(self.critic_history.maxlen):
             self.critic_history[i][env_ids] *= 0
+        self.stand_up_timer[env_ids] = 0.0
 
 # ================================================ Rewards ================================================== #
     # reference motion tracking
@@ -931,4 +941,49 @@ class PikachuTransferEnv(LeggedRobot):
             self.actions + self.last_last_actions - 2 * self.last_actions), dim=1)
         term_3 = 0.05 * torch.sum(torch.abs(self.actions), dim=1)
         return term_1 + term_2 + term_3
+
+    def _reward_stand_up(self):
+        """
+        惩罚机器人趴下/爬行姿态，奖励直立站立并给予长时间站立加成。
+        - 站立条件：base 高度达标 + 姿态竖直 + 手部无接触地面
+        - 趴下惩罚：手部接触地面且姿态倾斜时给出负值
+        - 时间加成：连续站立时长越长，额外奖励越高（tanh 饱和，约 2 秒饱和）
+        """
+        height_threshold = self.cfg.rewards.base_height_target * 0.75
+        base_height = self.root_states[:, 2]
+
+        # 姿态分量：projected_gravity 水平部分越小越竖直
+        gravity_xy_norm = torch.norm(self.projected_gravity[:, :2], dim=1)
+        orientation_reward = torch.exp(-gravity_xy_norm * 20)
+        height_reward = torch.exp(-torch.abs(base_height - self.cfg.rewards.base_height_target) * 100)
+
+        is_upright_height = base_height > height_threshold
+        is_upright_orient = gravity_xy_norm < 0.3
+
+        # 手部接触检测
+        if self.hand_indices.numel() > 0:
+            hand_contact = torch.any(
+                self.contact_forces[:, self.hand_indices, 2] > self.cfg.env.hand_contact_force,
+                dim=1
+            )
+        else:
+            hand_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+
+        is_standing = is_upright_height & is_upright_orient & ~hand_contact
+
+        # 更新站立计时器：站立则累加，否则清零
+        self.stand_up_timer[is_standing] += self.dt
+        self.stand_up_timer[~is_standing] = 0.0
+
+        # 即时站立奖励（0~1）
+        instant_reward = orientation_reward * height_reward
+
+        # 长时间站立加成：tanh 饱和，约 2 秒后接近 +1
+        time_bonus = torch.tanh(self.stand_up_timer / 2.0)
+
+        # 趴下惩罚：手接触地面且姿态倾斜
+        prone_penalty = hand_contact.float() * (1.0 - orientation_reward)
+
+        return instant_reward * (1.0 + time_bonus) - prone_penalty
+
 

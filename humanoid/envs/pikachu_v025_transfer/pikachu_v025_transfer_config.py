@@ -257,46 +257,60 @@ class PikachuTransferCfg(LeggedRobotCfg):
         max_contact_force = 100  # Forces above this value are penalized
 
         class scales:
-            # reference motion tracking
-            joint_pos = 5
-            # 抬脚高度奖励
-            feet_clearance = 2
-            # 每只脚接触顺序
-            feet_contact_number = 2
-            hand_contact_number = 2
-            # gait
-            feet_air_time = 1.5
-            # 脚滑奖励（惩罚）
-            foot_slip = -0.8
-            hand_slip = -0.8
+            # ── 核心站立目标 ──────────────────────────────────────────────
+            # 综合奖励：站立姿态 × 高度，并在连续站立时给予时间加成；趴下时给出惩罚
+            stand_up = 2.0
+            # 保持底盘水平（euler + projected_gravity 双重检测）
+            orientation = 2.0
+            # 保持底盘高度接近 base_height_target
+            base_height = 0.5
 
-            contact_no_vel = -1
+            # ── 稳定性 ────────────────────────────────────────────────────
+            # 双脚间距保持合理范围
             feet_distance = 0.2
+            # 双膝间距保持合理范围
             knee_distance = 0.2
-            # contact
-            feet_contact_forces = -0.01
-            # vel tracking
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.5 #0.2
-            track_vel_hard = 0.5 #0.5
-            stand_still = -0.05
-
-            # base pos
-            # default_joint_pos = 0.1
-            # default_joint_pos_left = 0.5
-            # default_joint_pos_right = 0.5
-
-            orientation = 2
-            base_height = 0.2
+            # 底盘加速度（惩罚剧烈晃动）
             base_acc = 0.2
-            # energy
+            # 脚部接触力不超限
+            feet_contact_forces = -0.01
+            # 碰撞惩罚
+            collision = -1.0
+
+            # ── 能量效率与动作平滑 ────────────────────────────────────────
             action_smoothness = -0.002
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7
-            collision = -1.
+
+            # ── 以下为步态相关奖励，站起任务阶段暂时关闭 ─────────────────
+            # 脚部抬离高度（行走步态）
+            # feet_clearance = 2
+            # 脚部接触时序与步态相位对齐（行走步态）
+            # feet_contact_number = 2
+            # 手部接触时序与步态相位对齐（行走步态）
+            # hand_contact_number = 2
+            # 脚部腾空时间（行走步态）
+            # feet_air_time = 1.5
+            # 关节位置跟踪参考运动（行走步态）
+            # joint_pos = 5
+            # 脚底滑动惩罚（行走稳定性，站立时可不用）
+            # foot_slip = -0.8
+            # 手部滑动惩罚（站起推地阶段会产生手部滑动，暂时关闭）
+            # hand_slip = -0.8
+            # 接触时无速度惩罚（行走步态）
+            # contact_no_vel = -1
+            # 速度跟踪奖励（无速度指令目标时关闭）
+            # tracking_lin_vel = 1.5
+            # tracking_ang_vel = 1.1
+            # vel_mismatch_exp = 0.5
+            # low_speed = 0.5
+            # track_vel_hard = 0.5
+            # stand_still = -0.05
+            # 关节默认位置跟踪（行走步态细调）
+            # default_joint_pos = 0.1
+            # default_joint_pos_left = 0.5
+            # default_joint_pos_right = 0.5
 
     class normalization:
         class obs_scales:
