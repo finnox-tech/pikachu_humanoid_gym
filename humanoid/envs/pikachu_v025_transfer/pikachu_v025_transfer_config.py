@@ -105,7 +105,8 @@ class PikachuTransferCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.15]
+        pos = [0.0, 0.0, 0.045]
+        rot = [0, 0.7071, 0, 0.7071]  # 绕Y轴旋转90度
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
         #   'left_hip_yaw_joint' : 0. ,   
@@ -258,34 +259,34 @@ class PikachuTransferCfg(LeggedRobotCfg):
         class scales:
             # reference motion tracking
             joint_pos = 5
-            # # 抬脚高度奖励
-            # feet_clearance = 2
-            # # 每只脚接触顺序
-            # feet_contact_number = 2
-            # hand_contact_number = 2
-            # # gait
-            # feet_air_time = 1.5
-            # # 脚滑奖励（惩罚）
-            # foot_slip = -0.8
-            # hand_slip = -0.8
+            # 抬脚高度奖励
+            feet_clearance = 2
+            # 每只脚接触顺序
+            feet_contact_number = 2
+            hand_contact_number = 2
+            # gait
+            feet_air_time = 1.5
+            # 脚滑奖励（惩罚）
+            foot_slip = -0.8
+            hand_slip = -0.8
 
-            # contact_no_vel = -1
-            # feet_distance = 0.2
-            # knee_distance = 0.2
-            # # contact
-            # feet_contact_forces = -0.01
-            # # vel tracking
-            # tracking_lin_vel = 1.5
-            # tracking_ang_vel = 1.1
-            # vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            # low_speed = 0.5 #0.2
-            # track_vel_hard = 0.5 #0.5
-            # stand_still = -0.05
+            contact_no_vel = -1
+            feet_distance = 0.2
+            knee_distance = 0.2
+            # contact
+            feet_contact_forces = -0.01
+            # vel tracking
+            tracking_lin_vel = 1.5
+            tracking_ang_vel = 1.1
+            vel_mismatch_exp = 0.5  # lin_z; ang x,y
+            low_speed = 0.5 #0.2
+            track_vel_hard = 0.5 #0.5
+            stand_still = -0.05
 
             # base pos
             # default_joint_pos = 0.1
-            default_joint_pos_left = 0.5
-            default_joint_pos_right = 0.5
+            # default_joint_pos_left = 0.5
+            # default_joint_pos_right = 0.5
 
             orientation = 2
             base_height = 0.2

@@ -114,10 +114,13 @@ class PikachuTransferEnv(LeggedRobot):
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        lower = self.dof_pos_limits[:, 0]  # [num_dof]
-        upper = self.dof_pos_limits[:, 1]  # [num_dof]
-        rand = torch_rand_float(0., 1., (len(env_ids), self.num_dof), device=self.device)
-        self.dof_pos[env_ids] = lower.unsqueeze(0) + rand * (upper - lower).unsqueeze(0)
+        # lower = self.dof_pos_limits[:, 0]  # [num_dof]
+        # upper = self.dof_pos_limits[:, 1]  # [num_dof]
+        # rand = torch_rand_float(0., 1., (len(env_ids), self.num_dof), device=self.device)
+        # self.dof_pos[env_ids] = lower.unsqueeze(0) + rand * (upper - lower).unsqueeze(0)
+        # self.dof_vel[env_ids] = 0.
+
+        self.dof_pos[env_ids] = self.default_dof_pos + torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
         self.dof_vel[env_ids] = 0.
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
@@ -143,7 +146,7 @@ class PikachuTransferEnv(LeggedRobot):
         # self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
         if self.cfg.asset.fix_base_link:
             self.root_states[env_ids, 7:13] = 0
-            self.root_states[env_ids, 2] += 1.8
+            self.root_states[env_ids, 2] += 0 #1.8 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
@@ -279,8 +282,8 @@ class PikachuTransferEnv(LeggedRobot):
         self.ref_dof_pos[:, self.right_ref_joint_indices[1]] =  sin_pos_r * scale_2
         self.ref_dof_pos[:, self.right_ref_joint_indices[2]] =  sin_pos_r * scale_1
 
-        self.ref_dof_pos[:, self.left_ref_joint_indices[3]]  = -sin_pos_r * scale_3
-        self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_l * scale_3
+        # self.ref_dof_pos[:, self.left_ref_joint_indices[3]]  = -sin_pos_r * scale_3
+        # self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_l * scale_3
         # Double support phase
         self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
