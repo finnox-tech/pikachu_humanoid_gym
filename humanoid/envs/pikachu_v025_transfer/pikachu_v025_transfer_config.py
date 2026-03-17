@@ -57,7 +57,7 @@ class PikachuTransferCfg(LeggedRobotCfg):
         # safety factors
         pos_limit = 0.9
         vel_limit = 1.0
-        torque_limit = 0.85
+        torque_limit = 0.5
 
     class asset(LeggedRobotCfg.asset):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof.urdf'

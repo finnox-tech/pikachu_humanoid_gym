@@ -27,7 +27,7 @@
         
         <!-- 执行器力矩传感器 -->
         
-        <jointactuatorfrc name="sens_Lhip_pitch_trq" joint="left_hip_pitch_joint" noise="0.01"/>
+        <!-- <jointactuatorfrc name="sens_Lhip_pitch_trq" joint="left_hip_pitch_joint" noise="0.01"/>
         <jointactuatorfrc name="sens_Lhip_roll_trq" joint="left_hip_roll_joint" noise="0.01"/>
         <jointactuatorfrc name="sens_Lhip_yaw_trq" joint="left_hip_yaw_joint" noise="0.01"/>
         <jointactuatorfrc name="sens_Lknee_trq" joint="left_knee_joint" noise="0.01"/>
@@ -37,7 +37,7 @@
         <jointactuatorfrc name="sens_Rhip_yaw_trq" joint="right_hip_yaw_joint" noise="0.01"/>
         <jointactuatorfrc name="sens_Rknee_trq" joint="right_knee_joint" noise="0.01"/>
         <jointactuatorfrc name="sens_Rankle_trq" joint="right_ankle_joint" noise="0.01"/>
-        
+         -->
         <!-- 躯干姿态传感器 -->
         <framequat name="imu_quat" objtype="site" objname="imu" />
         <gyro name="imu_gyro" site="imu" />

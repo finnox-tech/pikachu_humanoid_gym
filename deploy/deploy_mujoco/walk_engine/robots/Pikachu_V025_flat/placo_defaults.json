@@ -1,0 +1,46 @@
+{
+  "_comment": "说明：'feet_spacing' 表示左右脚间的横向距离（单位：米）。\n如果两脚间距不正确,请修改此处的值并重新运行程序。示例：0.12 表示 12 厘米。",
+  "dx": 1.0,
+  "dy": 0.0,
+  "dtheta": 0.0,
+  "duration": 5,
+  "hardware": true,
+  "trunk_mode": false,
+
+  "double_support_ratio": 0.2,
+  "startend_double_support_ratio": 1.5,
+  "planned_timesteps": 48,
+  "replan_timesteps": 10,
+
+  "walk_com_height": 0.2,
+  "walk_foot_height": 0.02,
+  "walk_trunk_pitch": 7,
+  "walk_foot_rise_ratio": 0.1,
+  "single_support_duration": 0.45,
+  "single_support_timesteps": 10,
+
+  "foot_length": 0.12,
+  "feet_spacing": 0.15,
+
+  "zmp_margin": 0.0,
+  "foot_zmp_target_x": 0.0,
+  "foot_zmp_target_y": -0.1,
+  
+  "walk_max_dtheta": 1.0,
+  "walk_max_dy": 0.1,
+  "walk_max_dx_forward": 0.1,
+  "walk_max_dx_backward": 0.1,
+  "joints": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_joint"
+  ],
+  "joint_angles": {}
+}

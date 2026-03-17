@@ -147,10 +147,10 @@
     <include file="sensors.xml"/>
     <include file="contact.xml"/>
 
-    <equality>
+    <!-- <equality>
     <weld name="fix_base" body1="world" body2="base_link" 
             anchor="0 0 0" relpose="0 0 -0.2 1 0 0 0"/>
-    </equality>
+    </equality> -->
 
 
 </mujoco>
