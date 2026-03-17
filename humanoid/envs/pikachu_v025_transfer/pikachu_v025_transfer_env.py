@@ -1110,12 +1110,14 @@ class PikachuTransferEnv(LeggedRobot):
         joint_diff = self.dof_pos - self.stand_joint_target.unsqueeze(0)
         joint_reward = torch.exp(-torch.sum(torch.square(joint_diff), dim=1) * 2.0)
 
-        # 四元数朝向误差：点积越接近 1 表示方向越一致
+ 
+        return joint_reward
+
+    def _reward_stand_rot(self):
+       # 四元数朝向误差：点积越接近 1 表示方向越一致
         # base_quat shape: (num_envs, 4)，target: (4,)
         quat_dot = torch.sum(self.base_quat * self.stand_quat_target.unsqueeze(0), dim=1).abs()
         quat_reward = torch.exp(-(1.0 - quat_dot) * 10.0)
-
-        return joint_reward * quat_reward
 
     def _reward_action_magnitude(self):
         """
