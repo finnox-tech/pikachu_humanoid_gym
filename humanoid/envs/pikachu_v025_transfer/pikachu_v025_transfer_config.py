@@ -57,7 +57,7 @@ class PikachuTransferCfg(LeggedRobotCfg):
         # safety factors
         pos_limit = 0.9
         vel_limit = 1.0
-        torque_limit = 0.5
+        torque_limit = 0.25
 
     class asset(LeggedRobotCfg.asset):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof.urdf'
@@ -288,7 +288,7 @@ class PikachuTransferCfg(LeggedRobotCfg):
             # 解决 stand_up/orientation 在远离目标时梯度消失的问题
             upright_progress = 3.0
             # 关节角 + 机体四元数同时接近 stand_joint_angles / rot=[0,0,0,1]
-            stand_pose = 2.0
+            stand_pose = 20.0
             # 保持底盘水平（euler + projected_gravity 双重检测）
             orientation = 2.0
             # 保持底盘高度接近 base_height_target

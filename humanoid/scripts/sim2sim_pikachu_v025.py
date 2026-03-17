@@ -95,7 +95,7 @@ class Sim2simCfg:
         default_q = DEFAULT_Q.copy()
         kps = np.array([80, 50, 25, 50, 50, 80, 50, 25, 50, 50], dtype=np.double)
         kds = np.array([1.0, 0.6, 0.05, 0.1, 0.01, 1.0, 0.6, 0.05, 0.1, 0.01], dtype=np.double)
-        tau_limit = 0.85 * np.array([12.5, 9.0, 9.0, 12.5, 9.0, 12.5, 9.0, 9.0, 12.5, 9.0], dtype=np.double)
+        tau_limit = 0.5 * np.array([12.5, 9.0, 9.0, 12.5, 9.0, 12.5, 9.0, 9.0, 12.5, 9.0], dtype=np.double)
 
 
 def quaternion_to_euler_array(quat):
