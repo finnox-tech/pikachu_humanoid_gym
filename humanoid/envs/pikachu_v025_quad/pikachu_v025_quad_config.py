@@ -219,8 +219,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
         # Reference sign for each leg in compute_ref_state.
         # Pikachu V025 left/right joint positive directions are aligned.
-        left_ref_sign =  1.0
-        right_ref_sign = 1.0
+
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -232,7 +231,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             # reference motion tracking
             joint_pos = 5
             # 抬脚高度奖励
-            feet_clearance = 2
+            feet_clearance = 2.5
             # 每只脚接触顺序
             feet_contact_number = 2
             hand_contact_number = 2
@@ -253,7 +252,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.5 #0.2
             track_vel_hard = 0.5 #0.5
-            stand_still = -0.05
+            stand_still = -0.1
 
             # base pos
             # default_joint_pos = 0.1

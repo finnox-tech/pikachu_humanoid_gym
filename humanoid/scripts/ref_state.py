@@ -129,11 +129,18 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
     t = np.arange(num_steps, dtype=np.float32) * dt
     phase = t / cycle_time
     sin_pos = np.sin(2.0 * np.pi * phase)
+
     sin_pos_l = sin_pos.copy()
     sin_pos_r = sin_pos.copy()
 
+    sin_pos_0 =  np.sin(np.pi * phase)
+    sin_pos_2 =  np.sin(2 * np.pi * phase)
+    sin_pos_f= sin_pos_0.copy()
+    sin_pos_b= sin_pos_2.copy()
+
     ref_dof_pos = np.zeros((num_steps, len(dof_names)), dtype=np.float32)
 
+    # # diag gait
     # sin_pos_l[sin_pos_l > 0.0] = 0.0
     # ref_dof_pos[:, lh] = left_sign * sin_pos_l * scale_1
     # ref_dof_pos[:, lk] = left_sign * sin_pos_l * scale_2
@@ -153,24 +160,18 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
 
     # bound gait 
     sin_pos_l[sin_pos_l > 0.0] = 0.0
-    sin_pos_r[sin_pos_r < 0.0] = 0.0
-
     ref_dof_pos[:, lh] = left_sign * sin_pos_l * scale_1
     ref_dof_pos[:, lk] = left_sign * sin_pos_l * scale_2
     ref_dof_pos[:, la] = left_sign * sin_pos_l * scale_1
 
-    ref_dof_pos[:, rh] = right_sign * sin_pos_l * scale_1
-    ref_dof_pos[:, rk] = right_sign * sin_pos_l * scale_2
-    ref_dof_pos[:, ra] = right_sign * sin_pos_l * scale_1
+    sin_pos_r[sin_pos_r < 0.0] = 0.0
+    ref_dof_pos[:, rh] = -right_sign * sin_pos_l * scale_1
+    ref_dof_pos[:, rk] = -right_sign * sin_pos_l * scale_2
+    ref_dof_pos[:, ra] = -right_sign * sin_pos_l * scale_1
 
     if has_arm:
-        # Arm pitch is opposite phase to the leg on the same side:
-        #   left  arm active when sin > 0  (= right-leg swing phase)
-        #   right arm active when sin < 0  (= left-leg  swing phase)
-        ref_dof_pos[:, la_arm] = -left_sign * sin_pos_r * scale_3
-        ref_dof_pos[:, ra_arm] = -right_sign * sin_pos_r * scale_3
-
-
+        ref_dof_pos[:, la_arm] = left_sign * sin_pos_r * scale_1
+        ref_dof_pos[:, ra_arm] = -right_sign * sin_pos_r * scale_1
 
 
     ds_mask = np.abs(sin_pos) < 0.1
