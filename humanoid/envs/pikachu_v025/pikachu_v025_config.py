@@ -131,10 +131,10 @@ class PikachuCfg(LeggedRobotCfg):
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
         stiffness = {'hip_pitch': 80,
-                     'hip_roll': 50,
-                     'hip_yaw': 25,
+                     'hip_roll': 50, # 3 ratio
+                     'hip_yaw': 25,  # 3 ratio
                      'knee': 50,
-                     'ankle': 50,
+                     'ankle': 50,    # 3 ratio
                      }  # [N*m/rad]
         
         damping = {  'hip_pitch': 1,
@@ -229,15 +229,15 @@ class PikachuCfg(LeggedRobotCfg):
             contact_no_vel = -1
             feet_distance = 0.2
             knee_distance = 0.2
-            stand_still = -0.05
+            stand_still = -0.1
             # contact
             feet_contact_forces = -0.01
             # vel tracking
             tracking_lin_vel = 1.2
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2 #0.2
-            track_vel_hard = 0.5 #0.5
+            low_speed = 0.2 # 0.2
+            track_vel_hard = 0.5 # 0.5
             # base pos
             # default_joint_pos = 0.1
             default_joint_pos_left = 0.2
