@@ -236,7 +236,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             feet_contact_number = 2
             hand_contact_number = 2
             # gait
-            feet_air_time = 1.0
+            feet_air_time = 1.8
             # 脚滑奖励（惩罚）
             foot_slip = -0.9
             hand_slip = -0.9
