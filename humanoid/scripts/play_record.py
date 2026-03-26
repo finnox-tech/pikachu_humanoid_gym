@@ -114,26 +114,21 @@ def play(args):
         camera_properties.height = 1080
         h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
         
-        # 初始相机位置（距离机器人的偏移）
-        camera_distance = 2.0  # 相机距离机器人的距离，可根据需要调整
-        camera_height = 1.0    # 相机高度偏移
-        camera_offset = gymapi.Vec3(camera_distance, 0, camera_height)  # 初始在机器人侧面
-        
-        # 初始旋转（看向机器人）
-        # 注意：这个旋转是相机相对于机器人的局部旋转
-        # 后续会动态更新
+        # 相机参数
+        camera_distance = 2.0
+        camera_height = 1.0
+        camera_offset = gymapi.Vec3(camera_distance, 0, camera_height)
         camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.deg2rad(0))
         
         actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
         body_handle = env.gym.get_actor_rigid_body_handle(env.envs[0], actor_handle, 0)
         
-        # 第一次附加相机
         env.gym.attach_camera_to_body(
             h1, env.envs[0], body_handle,
             gymapi.Transform(camera_offset, camera_rotation),
-            gymapi.FOLLOW_POSITION)  # FOLLOW_POSITION 会跟随位置但保持相对变换
+            gymapi.FOLLOW_POSITION)
         
-        # 视频录制设置
+        # 视频设置
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'videos')
         experiment_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'videos', train_cfg.runner.experiment_name)
@@ -145,50 +140,43 @@ def play(args):
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
         
         # 旋转参数
-        rotation_speed = 2 * np.pi / 5.0  # 5秒转一圈，角速度 rad/s
-        start_time = time.time()  # 记录开始时间
+        rotation_speed = 2 * np.pi / 5.0  # 5秒转一圈
+        start_time = time.time()
 
-    for i in tqdm(range(total_steps)):
-    # for i in range(total_steps):
-
-        actions = policy(obs.detach()) # * 0.
+    # 主循环
+    for i in range(total_steps):
+        actions = policy(obs.detach())
         
         if FIX_COMMAND:
-            env.commands[:, 0] = 0.3  # 1.0
+            env.commands[:, 0] = 0.3
             env.commands[:, 1] = 0.
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.0
-
+        
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
-
+        
         if RENDER:
-            # 更新相机位置和方向
+            # 更新相机位置
             current_time = time.time()
             elapsed_time = current_time - start_time
-            
-            # 计算当前旋转角度（持续增加）
             angle = rotation_speed * elapsed_time
             
-            # 计算相机相对于机器人的位置（圆周运动）
+            # 计算相机位置
             camera_x = camera_distance * np.cos(angle)
-            camera_z = camera_distance * np.sin(angle)  # 使用z轴作为前后方向
-            
-            # 更新相机偏移量
+            camera_z = camera_distance * np.sin(angle)
             camera_offset = gymapi.Vec3(camera_x, 0, camera_height)
             
-            # 计算相机看向机器人的旋转
-            # 相机应该朝向机器人（原点）
-            # 计算相机到原点的方向向量
-            direction = gymapi.Vec3(-camera_x, 0, -camera_z)
-            direction.Normalize()
+            # 计算相机朝向（看向机器人）
+            # 方法1：直接设置朝向为指向原点
+            # 创建从相机指向机器人的方向向量
+            direction = gymapi.Vec3(-camera_x, -camera_height, -camera_z)
+            direction = gymapi.normalize(direction) 
             
-            # 创建看向机器人的旋转
-            # 首先计算yaw角（水平旋转）
+            # 计算旋转角度
             yaw = np.arctan2(direction.z, direction.x) + np.pi
-            # pitch角（俯仰角），这里保持水平
-            pitch = -np.arctan2(camera_height, camera_distance)
+            pitch = np.arctan2(direction.y, np.sqrt(direction.x**2 + direction.z**2))
             
-            # 从欧拉角创建四元数
+            # 创建旋转四元数
             camera_rotation = gymapi.Quat.from_euler_zyx(gymapi.Vec3(0, pitch, yaw))
             
             # 更新相机变换
@@ -205,7 +193,8 @@ def play(args):
             img = np.reshape(img, (1080, 1920, 4))
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             video.write(img[..., :3])
-            
+
+
         logger.log_states(
             {
                 'dof_pos_target': actions[robot_index, joint_index].item() * env.cfg.control.action_scale,
