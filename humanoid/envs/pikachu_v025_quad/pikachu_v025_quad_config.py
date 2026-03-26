@@ -228,36 +228,37 @@ class PikachuQuadCfg(LeggedRobotCfg):
         max_contact_force = 100  # Forces above this value are penalized
 
         class scales:
-            # reference motion tracking
-            joint_pos = 5
-            # 抬脚高度奖励
-            feet_clearance = 2.5
-            # 每只脚接触顺序
-            feet_contact_number = 2
-            hand_contact_number = 2
-            # gait
-            feet_air_time = 1.5
-            # 脚滑奖励（惩罚）
-            foot_slip = -0.9
-            hand_slip = -0.9
+            # # reference motion tracking
+            # joint_pos = 5
+            # # 抬脚高度奖励
+            # feet_clearance = 2.5
+            # # 每只脚接触顺序
+            # feet_contact_number = 2
+            # hand_contact_number = 2
+            # # gait
+            # feet_air_time = 1.5
+            # # 脚滑奖励（惩罚）
+            # foot_slip = -0.9
+            # hand_slip = -0.9
 
-            contact_no_vel = -1
-            feet_distance = 0.2
-            knee_distance = 0.2
-            # contact
-            feet_contact_forces = -0.01
+            # contact_no_vel = -1
+            # feet_distance = 0.2
+            # knee_distance = 0.2
+            # # contact
+            # feet_contact_forces = -0.01
+
             # vel tracking
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.5 #0.2
-            track_vel_hard = 0.5 #0.5
+            # vel_mismatch_exp = 0.5  # lin_z; ang x,y
+            # low_speed = 0.5 #0.2
+            # track_vel_hard = 0.5 #0.5
             stand_still = -0.1
 
-            # base pos
-            # default_joint_pos = 0.1
-            default_joint_pos_left = 0.5
-            default_joint_pos_right = 0.5
+            # # base pos
+            # # default_joint_pos = 0.1
+            # default_joint_pos_left = 0.5
+            # default_joint_pos_right = 0.5
 
             orientation = 4
             base_height = 0.2
