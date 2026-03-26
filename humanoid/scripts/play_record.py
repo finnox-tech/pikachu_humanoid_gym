@@ -142,7 +142,7 @@ def play(args):
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
         
         # 旋转参数
-        rotation_speed = 2 * np.pi / 5.0  # 5秒转一圈
+        rotation_speed = 2 * np.pi / 50.0  # 5秒转一圈
         start_time = time.time()
 
     # 主循环
@@ -165,15 +165,15 @@ def play(args):
             
             # 计算相机位置（相对机器人的偏移）
             camera_x = camera_distance * np.cos(angle)
-            camera_z = camera_distance * np.sin(angle)
+            camera_y = camera_distance * np.sin(angle)
             
             # 计算相机旋转：让相机始终指向机器人
             # 相机朝向的角度 = 相机位置的角度 + 180度（指向中心）
             camera_yaw = angle + np.pi
             
             # 创建变换
-            camera_offset = gymapi.Vec3(camera_x, camera_height, camera_z)
-            camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), camera_yaw)
+            camera_offset = gymapi.Vec3(camera_x, camera_y, camera_height)
+            camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 0, 1), camera_yaw)
             
             # 更新相机
             camera_transform = gymapi.Transform(camera_offset, camera_rotation)
