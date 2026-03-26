@@ -142,8 +142,8 @@ def play(args):
             env.commands[:, 1] = 0.
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.0
-            if args.task == 'Pikachu_V025_Quad':
-                env.commands[:, 4] = 1.0  # 1=四足模式; 改为0.0可切换到双足
+            # if args.task == 'Pikachu_V025_Quad':
+            #     env.commands[:, 4] = 1.0  # 1=四足模式; 改为0.0可切换到双足
 
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
 
