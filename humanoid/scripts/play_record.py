@@ -105,7 +105,8 @@ def play(args):
     plot_steps = 200   # adjustable: plot first N steps
     total_steps = 1000 # adjustable: total play steps
     # Ensure at least one full episode finishes so reward stats are available.
-    total_steps = max(total_steps, int(getattr(env, "max_episode_length", 0)) + 1)
+    # total_steps = max(total_steps, int(getattr(env, "max_episode_length", 0)) + 1)
+    total_steps =1000
     plot_done = False
     if RENDER:
         camera_properties = gymapi.CameraProperties()
