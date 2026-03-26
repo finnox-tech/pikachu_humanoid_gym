@@ -263,7 +263,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
             orientation = 4
             base_height = 0.2
-            base_acc = 0.2
+            base_acc = 0.1
             # energy
             action_smoothness = -0.002
             torques = -1e-5
