@@ -104,7 +104,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.152]
+        pos = [0.0, 0.0, 0.154]
         # y 0.1 rad
         rot = [0.0, 0.04998, 0.0, 0.99875]
 
