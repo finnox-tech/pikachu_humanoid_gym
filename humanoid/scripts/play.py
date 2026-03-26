@@ -103,7 +103,7 @@ def play(args):
     robot_index = 0 # which robot is used for logging
     joint_index = 1 # which joint is used for logging
     plot_steps = 200   # adjustable: plot first N steps
-    total_steps = 12000 # adjustable: total play steps
+    total_steps = 2000 # adjustable: total play steps
     # Ensure at least one full episode finishes so reward stats are available.
     total_steps = max(total_steps, int(getattr(env, "max_episode_length", 0)) + 1)
     plot_done = False
