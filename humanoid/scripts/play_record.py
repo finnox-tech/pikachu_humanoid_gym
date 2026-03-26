@@ -115,17 +115,19 @@ def play(args):
         h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
         
         # 相机参数
-        camera_distance = 2.0
-        camera_height = 1.0
-        camera_offset = gymapi.Vec3(camera_distance, 0, camera_height)
-        camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.deg2rad(0))
+        camera_distance = 2.5  # 距离机器人的距离
+        camera_height = 1.2    # 相机高度
         
+        # 先附加相机到机器人
         actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
         body_handle = env.gym.get_actor_rigid_body_handle(env.envs[0], actor_handle, 0)
         
+        # 初始变换
+        initial_offset = gymapi.Vec3(camera_distance, 0, camera_height)
+        initial_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.pi)
         env.gym.attach_camera_to_body(
             h1, env.envs[0], body_handle,
-            gymapi.Transform(camera_offset, camera_rotation),
+            gymapi.Transform(initial_offset, initial_rotation),
             gymapi.FOLLOW_POSITION)
         
         # 视频设置
@@ -156,30 +158,24 @@ def play(args):
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
         
         if RENDER:
-            # 更新相机位置
+            # 计算当前角度
             current_time = time.time()
             elapsed_time = current_time - start_time
             angle = rotation_speed * elapsed_time
             
-            # 计算相机位置
+            # 计算相机位置（相对机器人的偏移）
             camera_x = camera_distance * np.cos(angle)
             camera_z = camera_distance * np.sin(angle)
-            camera_offset = gymapi.Vec3(camera_x, 0, camera_height)
             
-            # 计算相机朝向（看向机器人）
-            # 方法1：直接设置朝向为指向原点
-            # 创建从相机指向机器人的方向向量
-            direction = gymapi.Vec3(-camera_x, -camera_height, -camera_z)
-            direction = gymapi.normalize(direction) 
+            # 计算相机旋转：让相机始终指向机器人
+            # 相机朝向的角度 = 相机位置的角度 + 180度（指向中心）
+            camera_yaw = angle + np.pi
             
-            # 计算旋转角度
-            yaw = np.arctan2(direction.z, direction.x) + np.pi
-            pitch = np.arctan2(direction.y, np.sqrt(direction.x**2 + direction.z**2))
+            # 创建变换
+            camera_offset = gymapi.Vec3(camera_x, camera_height, camera_z)
+            camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), camera_yaw)
             
-            # 创建旋转四元数
-            camera_rotation = gymapi.Quat.from_euler_zyx(gymapi.Vec3(0, pitch, yaw))
-            
-            # 更新相机变换
+            # 更新相机
             camera_transform = gymapi.Transform(camera_offset, camera_rotation)
             env.gym.set_camera_transform(h1, env.envs[0], camera_transform)
             
@@ -193,6 +189,7 @@ def play(args):
             img = np.reshape(img, (1080, 1920, 4))
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             video.write(img[..., :3])
+
 
 
         logger.log_states(
