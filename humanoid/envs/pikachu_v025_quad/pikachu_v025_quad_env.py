@@ -689,7 +689,7 @@ class PikachuQuadEnv(LeggedRobot):
         left_yaw_roll = joint_diff[:, list(self.left_yaw_roll_indices)]
         yaw_roll = torch.norm(left_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100)- 0.01 * torch.norm(joint_diff, dim=1)
+        return torch.exp(-yaw_roll * 100)
 
     def _reward_default_joint_pos_right(self):
         """
@@ -700,7 +700,7 @@ class PikachuQuadEnv(LeggedRobot):
         right_yaw_roll = joint_diff[:, list(self.right_yaw_roll_indices)]
         yaw_roll = torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100)- 0.01 * torch.norm(joint_diff, dim=1)
+        return torch.exp(-yaw_roll * 100)
 
     def _reward_base_height(self):
         """
