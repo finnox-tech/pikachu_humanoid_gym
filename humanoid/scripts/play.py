@@ -132,8 +132,8 @@ def play(args):
             os.mkdir(experiment_dir)
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
 
-    # for i in tqdm(range(total_steps)):
-    for i in range(total_steps):
+    for i in tqdm(range(total_steps)):
+    # for i in range(total_steps):
 
         actions = policy(obs.detach()) # * 0.
         
@@ -142,8 +142,6 @@ def play(args):
             env.commands[:, 1] = 0.
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.0
-            if args.task == 'Pikachu_V025_Quad':
-                env.commands[:, 4] = 1.0  # 1=四足模式; 改为0.0可切换到双足
 
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
 
@@ -190,7 +188,7 @@ def play(args):
 
 if __name__ == '__main__':
     EXPORT_POLICY = True
-    RENDER = False
-    FIX_COMMAND = False
+    RENDER = True
+    FIX_COMMAND = True
     args = get_args()
     play(args)
