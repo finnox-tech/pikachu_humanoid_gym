@@ -105,19 +105,21 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.152]
+        # y 0.1 rad
+        rot = [0.0, 0.04998, 0.0, 0.99875]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
           'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
            'left_hip_pitch_joint' : -2.0,         
            'left_knee_joint' : -1.0,       
-           'left_ankle_joint' : -0.6,     
+           'left_ankle_joint' : -0.7,     
 
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
            'right_hip_pitch_joint' : 2.0,                                       
            'right_knee_joint' : 1.0,                                             
-           'right_ankle_joint' : 0.6,     
+           'right_ankle_joint' : 0.7,     
 
            'left_arm_pitch_joint' : -1.77,
            'left_arm_roll_joint' : 0.0,
