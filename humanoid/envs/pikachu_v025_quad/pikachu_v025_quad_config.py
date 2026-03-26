@@ -104,7 +104,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.15]
+        pos = [0.0, 0.0, 0.152]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
           'left_hip_yaw_joint' : 0. ,   
