@@ -146,7 +146,7 @@ def play(args):
         start_time = time.time()
 
     # 主循环
-    for i in range(total_steps):
+    for i in tqdm(range(total_steps)):
         actions = policy(obs.detach())
         
         if FIX_COMMAND:
