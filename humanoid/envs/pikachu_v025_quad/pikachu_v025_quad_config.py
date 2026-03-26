@@ -104,7 +104,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.158]
+        pos = [0.0, 0.0, 0.18]
         # y 0.1 rad
         # rot = [0.0, 0.04998, 0.0, 0.99875]
 
@@ -210,7 +210,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
             heading = [-3.14, 3.14]
 
     class rewards:
-        base_height_target = 0.155
+        base_height_target = 0.169
         # distance between 2 leg? 0.17~0.18
         min_dist = 0.1
         max_dist = 0.3
