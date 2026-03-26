@@ -335,7 +335,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="../meshes/left_ankle_flat_link.STL" />
+          filename="../meshes/left_ankle_link.STL" />
       </geometry>
       <material
         name="">
@@ -349,7 +349,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="../meshes/left_ankle_flat_link.STL" />
+          filename="../meshes/left_ankle_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -645,7 +645,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="../meshes/right_ankle_flat_link.STL" />
+          filename="../meshes/right_ankle_link.STL" />
       </geometry>
       <material
         name="">
@@ -659,7 +659,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="../meshes/right_ankle_flat_link.STL" />
+          filename="../meshes/right_ankle_link.STL" />
       </geometry>
     </collision>
   </link>
