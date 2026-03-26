@@ -113,83 +113,111 @@ def play(args):
         camera_properties.width = 1920
         camera_properties.height = 1080
         h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
-        
+
         # 相机参数
-        camera_distance = 2.5  # 距离机器人的距离
-        camera_height = 1.2    # 相机高度
-        
-        # 先附加相机到机器人
-        actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
-        body_handle = env.gym.get_actor_rigid_body_handle(env.envs[0], actor_handle, 0)
-        
-        # 初始变换
-        initial_offset = gymapi.Vec3(camera_distance, 0, camera_height)
-        initial_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.pi)
-        env.gym.attach_camera_to_body(
-            h1, env.envs[0], body_handle,
-            gymapi.Transform(initial_offset, initial_rotation),
-            gymapi.FOLLOW_POSITION)
-        
+        camera_distance = 2.5
+        camera_height = 1.0
+
         # 视频设置
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'videos')
-        experiment_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'videos', train_cfg.runner.experiment_name)
-        dir = os.path.join(experiment_dir, datetime.now().strftime('%b%d_%H-%M-%S')+ args.run_name + '.mp4')
-        if not os.path.exists(video_dir):
-            os.mkdir(video_dir)
-        if not os.path.exists(experiment_dir):
-            os.mkdir(experiment_dir)
+        experiment_dir = os.path.join(video_dir, train_cfg.runner.experiment_name)
+        dir = os.path.join(experiment_dir, datetime.now().strftime('%b%d_%H-%M-%S') + args.run_name + '.mp4')
+
+        os.makedirs(experiment_dir, exist_ok=True)
+
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
-        
+
         # 旋转参数
-        rotation_speed = 2 * np.pi / 50.0  # 5秒转一圈
+        rotation_speed = 2 * np.pi / 50.0   
         start_time = time.time()
 
-    # 主循环
+        last_yaw = 0.0
+        alpha = 0.1   # 平滑系数（越小越平滑）
+  
+    
     for i in tqdm(range(total_steps)):
         actions = policy(obs.detach())
-        
+
         if FIX_COMMAND:
             env.commands[:, 0] = 0.3
             env.commands[:, 1] = 0.
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.0
-        
+
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
-        
+
         if RENDER:
-            # 计算当前角度
-            current_time = time.time()
-            elapsed_time = current_time - start_time
+            # ===============================
+            # 1. 获取机器人位置（关键）
+            # ===============================
+            root_state = env.root_states[0]
+            base_pos = root_state[:3].cpu().numpy()
+
+            # ===============================
+            # 2. 计算圆周轨迹
+            # ===============================
+            elapsed_time = time.time() - start_time
             angle = rotation_speed * elapsed_time
-            
-            # 计算相机位置（相对机器人的偏移）
+
             camera_x = camera_distance * np.cos(angle)
             camera_y = camera_distance * np.sin(angle)
-            
-            # 计算相机旋转：让相机始终指向机器人
-            # 相机朝向的角度 = 相机位置的角度 + 180度（指向中心）
-            camera_yaw = angle + np.pi
-            
-            # 创建变换
-            camera_offset = gymapi.Vec3(camera_x, camera_y, camera_height)
-            camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 0, 1), camera_yaw)
-            
-            # 更新相机
-            camera_transform = gymapi.Transform(camera_offset, camera_rotation)
+
+            # ===============================
+            # 3. 世界坐标 = 机器人位置 + 偏移
+            # ===============================
+            camera_pos = gymapi.Vec3(
+                base_pos[0] + camera_x,
+                base_pos[1] + camera_y,
+                base_pos[2] + camera_height
+            )
+
+            # ===============================
+            # 4. look-at 机器人
+            # ===============================
+            target = gymapi.Vec3(
+                base_pos[0],
+                base_pos[1],
+                base_pos[2] + 0.5
+            )
+
+            dx = target.x - camera_pos.x
+            dy = target.y - camera_pos.y
+
+            desired_yaw = np.arctan2(dy, dx)
+
+            # ===============================
+            # 5. ⭐ 平滑 yaw（关键）
+            # ===============================
+            # 处理角度跳变（-pi ~ pi）
+            delta = desired_yaw - last_yaw
+            delta = (delta + np.pi) % (2 * np.pi) - np.pi
+
+            smooth_yaw = last_yaw + alpha * delta
+            last_yaw = smooth_yaw
+
+            camera_rotation = gymapi.Quat.from_axis_angle(
+                gymapi.Vec3(0, 0, 1),
+                smooth_yaw
+            )
+
+            # ===============================
+            # 6. 更新相机
+            # ===============================
+            camera_transform = gymapi.Transform(camera_pos, camera_rotation)
             env.gym.set_camera_transform(h1, env.envs[0], camera_transform)
-            
-            # 渲染
+
+            # ===============================
+            # 7. 渲染
+            # ===============================
             env.gym.fetch_results(env.sim, True)
             env.gym.step_graphics(env.sim)
             env.gym.render_all_camera_sensors(env.sim)
-            
-            # 获取图像
+
             img = env.gym.get_camera_image(env.sim, env.envs[0], h1, gymapi.IMAGE_COLOR)
             img = np.reshape(img, (1080, 1920, 4))
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             video.write(img[..., :3])
-
 
 
         logger.log_states(
