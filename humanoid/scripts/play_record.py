@@ -132,8 +132,8 @@ def play(args):
             os.mkdir(experiment_dir)
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
 
-    # for i in tqdm(range(total_steps)):
-    for i in range(total_steps):
+    for i in tqdm(range(total_steps)):
+    # for i in range(total_steps):
 
         actions = policy(obs.detach()) # * 0.
         
