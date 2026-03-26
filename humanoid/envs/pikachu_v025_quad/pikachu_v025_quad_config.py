@@ -213,8 +213,8 @@ class PikachuQuadCfg(LeggedRobotCfg):
         min_dist = 0.1
         max_dist = 0.3
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.1   # rad
-        target_feet_height = 0.02        # m
+        target_joint_pos_scale = 0.2     # rad
+        target_feet_height = 0.03        # m
         cycle_time = 0.56                # sec
 
         # Reference sign for each leg in compute_ref_state.
