@@ -261,9 +261,9 @@ class PikachuQuadCfg(LeggedRobotCfg):
             default_joint_pos_left = 0.5
             default_joint_pos_right = 0.5
 
-            orientation = 4
+            orientation = 2
             base_height = 0.2
-            base_acc = 0.1
+            base_acc = 0.01
             # energy
             action_smoothness = -0.002
             torques = -1e-5
