@@ -113,7 +113,7 @@ def play(args):
         camera_properties.width = 1920
         camera_properties.height = 1080
         h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
-        camera_offset = gymapi.Vec3(1, -1, 0.8)
+        camera_offset = gymapi.Vec3(1, -1, 0.5)
         camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(-0.3, 0.2, 1),
                                                     np.deg2rad(135))
         actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
