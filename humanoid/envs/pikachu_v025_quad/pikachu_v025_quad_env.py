@@ -500,8 +500,9 @@ class PikachuQuadEnv(LeggedRobot):
         joint_pos = self.dof_pos.clone()
         pos_target = self.ref_dof_pos.clone()
         diff = joint_pos - pos_target
+        command_mask= (torch.norm(self.commands[:, :2], dim=1) > 0.1) # 指令大于0.1的时候才给参考动作奖励
         r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(diff, dim=1).clamp(0, 0.5)
-        return r
+        return r*command_mask
 
     def _reward_feet_clearance(self):
         """
@@ -678,7 +679,7 @@ class PikachuQuadEnv(LeggedRobot):
         right_yaw_roll = joint_diff[:, list(self.right_yaw_roll_indices)]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        return (torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)) 
 
     def _reward_default_joint_pos_left(self):
         """
@@ -700,7 +701,7 @@ class PikachuQuadEnv(LeggedRobot):
         right_yaw_roll = joint_diff[:, list(self.right_yaw_roll_indices)]
         yaw_roll = torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100)
+        return torch.exp(-yaw_roll * 100) 
 
     def _reward_base_height(self):
         """
