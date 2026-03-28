@@ -500,7 +500,7 @@ class PikachuQuadEnv(LeggedRobot):
         joint_pos = self.dof_pos.clone()
         pos_target = self.ref_dof_pos.clone()
         diff = joint_pos - pos_target
-        command_mask= (torch.norm(self.commands[:, :2], dim=1) > 0.1) # 指令大于0.1的时候才给参考动作奖励
+        command_mask = (torch.norm(self.commands[:, :2], dim=1) > 0.1) # 指令大于0.1的时候才给参考动作奖励
         r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(diff, dim=1).clamp(0, 0.5)
         return r*command_mask
 
