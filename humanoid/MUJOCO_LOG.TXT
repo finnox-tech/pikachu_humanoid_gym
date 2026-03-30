@@ -1,0 +1,6 @@
+Mon Mar 30 11:21:15 2026
+WARNING: File size over 2GB is not supported. File: '/home/finnox/Pikachu/PikachuRobot/pikachu_humanoid_gym/resources/robots/Pikachu_V025/mjcf_14dof'
+
+Mon Mar 30 11:21:15 2026
+WARNING: mju_openResource: unknown file '/home/finnox/Pikachu/PikachuRobot/pikachu_humanoid_gym/resources/robots/Pikachu_V025/mjcf_14dof'
+

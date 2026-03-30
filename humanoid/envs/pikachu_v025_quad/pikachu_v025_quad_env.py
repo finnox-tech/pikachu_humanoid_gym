@@ -219,7 +219,7 @@ class PikachuQuadEnv(LeggedRobot):
         self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_r * scale_3
 
         # Double support phase
-        self.ref_dof_pos[torch.abs(sin_pos) < 0.2] = 0
+        self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
         self.ref_action = 2 * self.ref_dof_pos
 
