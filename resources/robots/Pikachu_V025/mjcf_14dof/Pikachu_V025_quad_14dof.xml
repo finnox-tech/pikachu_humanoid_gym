@@ -39,14 +39,17 @@
 <!-- left_arm_pitch  hip_pitch  knee ankle -->
     </asset>
     <worldbody>
-        <body name="base_link" pos="0 0 -0.28" quat="0.63298 0 0.774168 0" childclass="pikachu_v025">
+     <!-- quat="0.63298 0 0.774168 0" - R - eu -->
+        <body name="base_link" pos="0 0 -0.32" quat="0.63298 0 0.774168 0" childclass="pikachu_v025">
             <freejoint name="floating_base"/>
+     
+            <!-- IMU位置 -->
+            <site name="imu" pos="0 0 0" quat="0.63298 0 -0.774168 0" size='0.01' />
 
             <inertial pos="-0.0248659 -0.000239075 0.10428" quat="0.710649 -0.0251612 -0.0252497 0.702643" mass="1.51846" diaginertia="0.00263554 0.00237184 0.00139589" />
             <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.792157 0.819608 0.933333 1" mesh="base_link" />
             <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="base_link" />
-            <!-- IMU位置 -->
-            <site name="imu" pos="0 0 0" />
+
             <body name="left_hip_pitch_link" pos="0 0.0515 0">
                 <inertial pos="0.00920325 0.0289511 0.0244534" quat="0.986737 -0.161982 -0.0046624 -0.00951114" mass="0.131128" diaginertia="3.09449e-05 3.02338e-05 2.40386e-05" />
                 <joint name="left_hip_pitch_joint" pos="0 0 0" axis="0 1 0" class="left_hip_pitch" />
@@ -180,10 +183,10 @@
     <include file="sensors.xml"/>
     <include file="contact.xml"/>
 
-    <equality>
+    <!-- <equality>
     <weld name="fix_base" body1="world" body2="base_link" 
-            anchor="0 0 0" relpose="0 0 -0.2 0.63298 0 0.774168 0"/>
-    </equality>
+            anchor="0 0 0" relpose="0 0 -0.32 0.63298 0 0.774168 0"/>
+    </equality> -->
 
 
 </mujoco>

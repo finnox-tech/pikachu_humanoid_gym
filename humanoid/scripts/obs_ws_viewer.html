@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pikachu Sim2Sim Obs Viewer</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 10px; }
+        h3 { color: #333; }
+        #plot { width: 100%; height: 600px; border: 1px solid #ccc; }
+        #info { font-size: 12px; color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<h3>Pikachu Sim2Sim Observations (ws://localhost:8765)</h3>
+<div id="plot"></div>
+<div id="info">Waiting for connection...</div>
+
+<script>
+const ws = new WebSocket('ws://localhost:8765');
+const maxPoints = 1500;
+
+// 动态追踪所有曲线
+const traces = {};
+let stepCount = 0;
+
+Plotly.newPlot('plot', [], {
+    title: 'Sim2sim observations',
+    xaxis: { title: 'step' },
+    yaxis: { title: 'value' }
+});
+
+ws.onopen = function () {
+    ws.send(JSON.stringify({client_type: 'viewer'}));
+    document.getElementById('info').textContent = '✓ Viewer connected to WS server';
+    console.log('Viewer connected to WS server');
+};
+
+ws.onmessage = function (event) {
+    let data;
+    try {
+        data = JSON.parse(event.data);
+    } catch (e) {
+        console.error('JSON parse error:', e);
+        return;
+    }
+
+    if (typeof data.step === 'undefined') {
+        return;
+    }
+
+    const step = data.step;
+
+    // 遍历所有字段，除了 step
+    for (const [key, value] of Object.entries(data)) {
+        if (key === 'step') continue;
+
+        // 初始化 trace
+        if (!traces[key]) {
+            traces[key] = {
+                x: [],
+                y: [],
+                name: key,
+                mode: 'lines',
+                line: { color: getColorForKey(key) }
+            };
+        }
+
+        // 处理数组和标量
+        let y_val;
+        if (Array.isArray(value)) {
+            y_val = value.length > 0 ? value[0] : 0;
+        } else {
+            y_val = parseFloat(value) || 0;
+        }
+
+        traces[key].x.push(step);
+        traces[key].y.push(y_val);
+
+        // 保持最大点数
+        if (traces[key].x.length > maxPoints) {
+            traces[key].x.shift();
+            traces[key].y.shift();
+        }
+    }
+
+    // 更新图表
+    const traceList = Object.values(traces);
+    Plotly.react('plot', traceList, {
+        title: 'Sim2sim observations',
+        xaxis: { title: 'step' },
+        yaxis: { title: 'value' }
+    });
+
+    stepCount++;
+    if (stepCount % 100 === 0) {
+        document.getElementById('info').textContent = `Steps: ${stepCount} | Traces: ${Object.keys(traces).length}`;
+    }
+};
+
+ws.onclose = function () {
+    document.getElementById('info').textContent = '✗ WS connection closed';
+    console.warn('WS connection closed');
+};
+
+ws.onerror = function (e) {
+    document.getElementById('info').textContent = '✗ WS error: ' + e;
+    console.error('WS error', e);
+};
+
+// 给每个 key 分配不同颜色
+const colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan',
+                'magenta', 'lime', 'navy', 'teal', 'maroon', 'aqua', 'darkred', 'darkgreen', 'darkblue', 'gold'];
+function getColorForKey(key) {
+    const hash = key.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+}
+</script>
+</body>
+</html>

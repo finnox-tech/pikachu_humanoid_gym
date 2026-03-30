@@ -275,7 +275,9 @@ class PikachuQuadEnv(LeggedRobot):
     def step(self, actions):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
+
         actions = torch.clip(actions, -self.cfg.normalization.clip_actions, self.cfg.normalization.clip_actions)
+        
         # dynamic randomization
         delay = torch.rand((self.num_envs, 1), device=self.device) * self.cfg.domain_rand.action_delay
         actions = (1 - delay) * actions + delay * self.actions
@@ -364,7 +366,7 @@ class PikachuQuadEnv(LeggedRobot):
         obs_buf = torch.cat((
             self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
             q,    # num_actions
-            dq,  # num_actions
+            dq,   # num_actions
             self.actions,   # num_actions
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
@@ -387,9 +389,15 @@ class PikachuQuadEnv(LeggedRobot):
 
         self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)  # N, T*K
         self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
-        
+
 # ================================================ Debugs ================================================== #
         if self._debug:
+
+            # obs
+            # print(self.base_euler_xyz * self.obs_scales.quat)
+            # print(self.base_ang_vel * self.obs_scales.ang_vel)
+            # print(self.actions)
+            print(self.torques)
 
             measured_heights = torch.sum(
                 self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)

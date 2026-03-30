@@ -138,6 +138,14 @@ def run_mujoco(policy, cfg):
 
             obs = np.clip(obs, -cfg.normalization.clip_observations, cfg.normalization.clip_observations)
 
+            print(f"obs_sin_cos: {obs[0, 0:2]}")
+            print(f"obs_cmd: {obs[0, 2:5]}")
+            print(f"obs_dof_pos: {obs[0, 5:17]}")
+            print(f"obs_dof_vel: {obs[0, 17:29]}")
+            print(f"obs_action: {obs[0, 29:41]}")
+            print(f"obs_omega: {obs[0, 41:44]}")
+            print(f"obs_eu_ang: {obs[0, 44:47]}")
+
             hist_obs.append(obs)
             hist_obs.popleft()
 
