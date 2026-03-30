@@ -387,6 +387,7 @@ class PikachuQuadEnv(LeggedRobot):
 
         self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)  # N, T*K
         self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
+        
 # ================================================ Debugs ================================================== #
         if self._debug:
 
