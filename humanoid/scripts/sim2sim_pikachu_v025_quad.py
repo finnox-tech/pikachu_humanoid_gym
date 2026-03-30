@@ -38,7 +38,7 @@ from humanoid import LEGGED_GYM_ROOT_DIR
 
 
 class cmd:
-    vx = 0.3
+    vx = 0.0
     vy = 0.0
     dyaw = 0.0
 
@@ -133,7 +133,7 @@ def pd_control(target_q, q, kp, target_dq, dq, kd):
 
 
 def run_mujoco(policy, cfg):
-    import mujoco_viewer
+    import mujoco.viewer
     import torch
     from tqdm import tqdm
 
@@ -141,66 +141,95 @@ def run_mujoco(policy, cfg):
     model.opt.timestep = cfg.sim_config.dt
     data = mujoco.MjData(model)
 
+    # 初始化输出机器人关节信息
+    print("<<------------- Link ------------->> ")
+    for i in range(model.nbody):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, i)
+        if name:
+            print("link_index:", i, ", name:", name)
+    print(" ")
+
+    print("<<------------- Joint ------------->> ")
+    for i in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, i)
+        if name:
+            print("joint_index:", i, ", name:", name)
+    print(" ")
+
+    print("<<------------- Actuator ------------->>")
+    for i in range(model.nu):
+        name = mujoco.mj_id2name(
+            model, mujoco._enums.mjtObj.mjOBJ_ACTUATOR, i
+        )
+        if name:
+            print("actuator_index:", i, ", name:", name)
+    print(" ")
+
     data.qpos[7:] = cfg.robot_config.default_q
     mujoco.mj_forward(model, data)
 
-    viewer = mujoco_viewer.MujocoViewer(model, data)
+    with mujoco.viewer.launch_passive(model, data) as viewer:
+        target_q = cfg.robot_config.default_q.copy()
+        action = np.zeros(cfg.env.num_actions, dtype=np.double)
 
-    target_q = cfg.robot_config.default_q.copy()
-    action = np.zeros(cfg.env.num_actions, dtype=np.double)
+        hist_obs = deque()
+        for _ in range(cfg.env.frame_stack):
+            hist_obs.append(np.zeros([1, cfg.env.num_single_obs], dtype=np.double))
 
-    hist_obs = deque()
-    for _ in range(cfg.env.frame_stack):
-        hist_obs.append(np.zeros([1, cfg.env.num_single_obs], dtype=np.double))
+        count_lowlevel = 0
+        max_steps = int(cfg.sim_config.sim_duration / cfg.sim_config.dt)
 
-    count_lowlevel = 0
+        with tqdm(total=max_steps, desc="Simulating...") as pbar:
+            while viewer.is_running() and count_lowlevel < max_steps:
+                q, dq, quat, omega = get_obs(data)
+                q = q[-cfg.env.num_actions:]
+                dq = dq[-cfg.env.num_actions:]
 
-    for _ in tqdm(range(int(cfg.sim_config.sim_duration / cfg.sim_config.dt)), desc="Simulating..."):
-        q, dq, quat, omega = get_obs(data)
-        q = q[-cfg.env.num_actions:]
-        dq = dq[-cfg.env.num_actions:]
+                if count_lowlevel >= 500:
+                    if count_lowlevel % cfg.sim_config.decimation == 0:
+                        obs = np.zeros([1, cfg.env.num_single_obs], dtype=np.float32)
+                        eu_ang = quaternion_to_euler_array(quat)
+                        eu_ang[eu_ang > math.pi] -= 2 * math.pi
 
-        if count_lowlevel % cfg.sim_config.decimation == 0:
-            obs = np.zeros([1, cfg.env.num_single_obs], dtype=np.float32)
-            eu_ang = quaternion_to_euler_array(quat)
-            eu_ang[eu_ang > math.pi] -= 2 * math.pi
+                        obs[0, 0] = math.sin(2 * math.pi * count_lowlevel * cfg.sim_config.dt / cfg.rewards.cycle_time)
+                        obs[0, 1] = math.cos(2 * math.pi * count_lowlevel * cfg.sim_config.dt / cfg.rewards.cycle_time)
+                        obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+                        obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+                        obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
 
-            obs[0, 0] = math.sin(2 * math.pi * count_lowlevel * cfg.sim_config.dt / cfg.rewards.cycle_time)
-            obs[0, 1] = math.cos(2 * math.pi * count_lowlevel * cfg.sim_config.dt / cfg.rewards.cycle_time)
-            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
-            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
-            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-            obs[0, 5:19] = (q - cfg.robot_config.default_q) * cfg.normalization.obs_scales.dof_pos
-            obs[0, 19:33] = dq * cfg.normalization.obs_scales.dof_vel
-            obs[0, 33:47] = action
-            obs[0, 47:50] = omega * cfg.normalization.obs_scales.ang_vel
-            obs[0, 50:53] = eu_ang * cfg.normalization.obs_scales.quat
+                        obs[0, 5:19] = (q - cfg.robot_config.default_q) * cfg.normalization.obs_scales.dof_pos
+                        obs[0, 19:33] = dq * cfg.normalization.obs_scales.dof_vel
+                        obs[0, 33:47] = action
 
-            obs = np.clip(obs, -cfg.normalization.clip_observations, cfg.normalization.clip_observations)
+                        obs[0, 47:50] = omega * cfg.normalization.obs_scales.ang_vel
+                        obs[0, 50:53] = eu_ang * cfg.normalization.obs_scales.quat
 
-            hist_obs.append(obs)
-            hist_obs.popleft()
+                        obs = np.clip(obs, -cfg.normalization.clip_observations, cfg.normalization.clip_observations)
 
-            policy_input = np.zeros([1, cfg.env.num_observations], dtype=np.float32)
-            for i in range(cfg.env.frame_stack):
-                start = i * cfg.env.num_single_obs
-                end = (i + 1) * cfg.env.num_single_obs
-                policy_input[0, start:end] = hist_obs[i][0, :]
+                        hist_obs.append(obs)
+                        hist_obs.popleft()
 
-            action[:] = policy(torch.tensor(policy_input))[0].detach().numpy()
-            action = np.clip(action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions)
-            target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
+                        policy_input = np.zeros([1, cfg.env.num_observations], dtype=np.float32)
+                        for i in range(cfg.env.frame_stack):
+                            start = i * cfg.env.num_single_obs
+                            end = (i + 1) * cfg.env.num_single_obs
+                            policy_input[0, start:end] = hist_obs[i][0, :]
 
-        target_dq = np.zeros(cfg.env.num_actions, dtype=np.double)
-        tau = pd_control(target_q, q, cfg.robot_config.kps, target_dq, dq, cfg.robot_config.kds)
-        tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)
-        data.ctrl = tau
+                        action[:] = policy(torch.tensor(policy_input))[0].detach().numpy()
+                        action = np.clip(action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions)
+                        
+                        target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
+                else:
+                    target_q = cfg.robot_config.default_q
 
-        mujoco.mj_step(model, data)
-        viewer.render()
-        count_lowlevel += 1
-
-    viewer.close()
+                target_dq = np.zeros(cfg.env.num_actions, dtype=np.double)
+                tau = pd_control(target_q, q, cfg.robot_config.kps, target_dq, dq, cfg.robot_config.kds)
+                tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)
+                data.ctrl = tau
+                mujoco.mj_step(model, data)
+                viewer.sync()
+                count_lowlevel += 1
+                pbar.update(1)
 
 
 if __name__ == "__main__":
