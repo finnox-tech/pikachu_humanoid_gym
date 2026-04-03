@@ -57,10 +57,10 @@ class PikachuQuadCfg(LeggedRobotCfg):
         # safety factors
         pos_limit = 0.9
         vel_limit = 1.0
-        torque_limit = 0.85
+        torque_limit = 0.2
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof_quad.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof_quad_lite.urdf'
 
         name = "Pikachu_V0025"
         foot_name = "ankle"

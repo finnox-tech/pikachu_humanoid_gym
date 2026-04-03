@@ -56,10 +56,11 @@ class PikachuCfg(LeggedRobotCfg):
         # safety factors
         pos_limit = 0.9
         vel_limit = 1.0
-        torque_limit = 0.85
+        torque_limit = 0.85  # 0.2
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat.urdf'
+        # file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_lite.urdf'
 
         name = "Pikachu_V0025"
         foot_name = "ankle"
@@ -102,7 +103,7 @@ class PikachuCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.15]
+        pos = [0.0, 0.0, 0.151] #15
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
            'left_hip_yaw_joint' : 0. ,   
@@ -229,7 +230,7 @@ class PikachuCfg(LeggedRobotCfg):
             contact_no_vel = -1
             feet_distance = 0.2
             knee_distance = 0.2
-            stand_still = -0.1
+            stand_still = -0.05
             # contact
             feet_contact_forces = -0.01
             # vel tracking

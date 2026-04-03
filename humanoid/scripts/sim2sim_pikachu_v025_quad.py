@@ -104,7 +104,14 @@ JOINT_NAMES = (
 )
 
 DEFAULT_Q = np.array([-2.0, 0.0, 0.0, -1.0, -0.7, 2.0, 0.0, 0.0, 1.0, 0.7, -1.77, 0.0, 1.77, 0.0], dtype=np.double)
-
+# pose_r= [ 2.9, 0.0, 0.0, 1.57, 0.8]
+# pose_l= [-2.9, 0.0, 0.0,-1.57,-0.8]
+# pose_a= [0.0,-1.57,1.57,0.0]
+Q_stand_ready = np.array([-2.44, 0.0, 0.0, -1.57, -0.8, 2.44, 0.0, 0.0, 1.57, 0.8, -1.57, 0.0, 1.57, 0.0], dtype=np.double)
+# 
+# pose_r= [ 0.8, 0.0, 0.0, 1.12,0.6]
+# pose_l= [-0.8, 0.0, 0.0, -1.12,-0.6]
+Q_stand_up = np.array([-0.8, 0.0, 0.0, -1.12, -0.6, 0.8, 0.0, 0.0, 1.12, 0.6, -0, 0.0, 0, 0.0], dtype=np.double)
 
 class Sim2simCfg:
     class env:
@@ -139,7 +146,7 @@ class Sim2simCfg:
         decimation = 10
 
     class plot:
-        enabled = True
+        enabled = False
         max_points = 1500
         redraw_interval = 5
 
@@ -407,15 +414,34 @@ def run_mujoco(policy, cfg, ws_queue=None):
                         action = (1 - delay) * action + delay * last_action
                         last_action = action.copy()
 
-                        target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
+                        # 4000 步内按三段插值：默认 -> 站立准备 -> 站立抬起
+                        if count_lowlevel < 500:
+                            t = float(count_lowlevel) / 500.0
+                            target_q = (1 - t) * cfg.robot_config.default_q + t * Q_stand_ready
+                        elif count_lowlevel < 2000:
+                            t = float(count_lowlevel - 500) / 1500.0
+                            target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
+                            
+                        # elif count_lowlevel < 1500:
+                        #     t = float(count_lowlevel - 1000) / 500.0
+                        #     target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
+                        # else:
+                        #     target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
                 else:
-                    target_q = cfg.robot_config.default_q
+                    # 250 步前也做移动插值过渡, 不直接用 default_q 固定体态
+                    if count_lowlevel < 2000:
+                        t = float(count_lowlevel) / 2000.0
+                        target_q = (1 - t) * cfg.robot_config.default_q + t * Q_stand_ready
+                    else:
+                        t = float(max(0, count_lowlevel - 2000)) / 2000.0
+                        t = min(t, 1.0)
+                        target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
 
 
                 target_dq = np.zeros(cfg.env.num_actions, dtype=np.double)
                 tau = pd_control(target_q, q, cfg.robot_config.kps, target_dq, dq, cfg.robot_config.kds)
                 tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)
-                print(tau)
+                # print(tau)
                 data.ctrl = tau
                 mujoco.mj_step(model, data)
                 viewer.sync()

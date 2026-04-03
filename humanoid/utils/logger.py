@@ -29,6 +29,8 @@
 #
 # Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
 
+import matplotlib
+# matplotlib.use('Agg')  # 使用非交互式后端
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -82,7 +84,13 @@ class Logger:
             print(f"Saved state plot to: {save_path}")
         if show:
             # In child process we can block safely; this keeps window alive.
-            plt.show()
+                try:
+                    # 尝试显示图像
+                    plt.show()
+                except Exception as e:
+                    print(f"Cannot display plot (likely no GUI): {e}")
+                    if save_path:
+                        print(f"Plot saved to: {save_path}")
         else:
             plt.close(fig)
 

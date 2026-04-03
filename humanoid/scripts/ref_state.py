@@ -170,8 +170,8 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
     ref_dof_pos[:, ra] = -right_sign * sin_pos_l * scale_1
 
     if has_arm:
-        ref_dof_pos[:, la_arm] = left_sign * sin_pos_r * scale_1
-        ref_dof_pos[:, ra_arm] = -right_sign * sin_pos_r * scale_1
+        ref_dof_pos[:, la_arm] = -left_sign * sin_pos_l * scale_1*3-0.2
+        ref_dof_pos[:, ra_arm] = right_sign * sin_pos_l * scale_1*3+0.2
 
 
     ds_mask = np.abs(sin_pos) < 0.1
@@ -179,7 +179,7 @@ def _build_ref_traj(cfg, dof_names, seconds, dt, cycle_time_override, scale_over
 
     ref_action = 2.0 * ref_dof_pos
     action_scale = float(cfg.control.action_scale)
-    ref_pd_offset = action_scale * ref_action
+    ref_pd_offset = action_scale * ref_action*5
 
     ref_joint_indices = (
         (lh, lk, la, la_arm, rh, rk, ra, ra_arm) if has_arm else (lh, lk, la, rh, rk, ra)
