@@ -31,7 +31,7 @@
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 
-class PikachuQuadCfg(LeggedRobotCfg):
+class PikachuQuadStandCfg(LeggedRobotCfg):
     """
     Configuration class for the XBotL humanoid robot.
     """
@@ -45,27 +45,19 @@ class PikachuQuadCfg(LeggedRobotCfg):
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
         num_actions = 14
         num_envs = 4096
-        episode_length_s = 24     # episode length in seconds
-        use_ref_actions = False   # speed up training by using reference actions
-        foot_contact_force=3.0  # contact force threshold for foot-ground contact
-        hand_contact_force=3.0  # contact force threshold for hand-ground contact
+        episode_length_s = 16
+        use_ref_actions = False
+        foot_contact_force = 3.0
+        hand_contact_force = 3.0
         base_vel_lpf = 0.9
 
         get_commands_from_keyboard = False
         debug = False
-
-        plot_debug = True
-        plot_env_index = 0
-        # plot_joint_indices = list(range(num_actions))
-        plot_joint_indices = [0,1,2,3,4]
-        plot_max_points = 600
-        plot_redraw_interval = 2
-
     class safety:
         # safety factors
         pos_limit = 0.9
-        vel_limit = 5.0
-        torque_limit = 1 #0.2
+        vel_limit = 1.0
+        torque_limit = 0.2
 
     class asset(LeggedRobotCfg.asset):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/urdf/Pikachu_V025_flat_14dof_quad_lite_short.urdf'
@@ -84,9 +76,7 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
     class terrain(LeggedRobotCfg.terrain):
         mesh_type = 'plane'
-        # mesh_type = 'trimesh'
         curriculum = False
-        # rough terrain only:
         measure_heights = False
         static_friction = 0.6
         dynamic_friction = 0.6
@@ -101,62 +91,87 @@ class PikachuQuadCfg(LeggedRobotCfg):
 
     class noise:
         add_noise = True
-        noise_level = 0.6    # scales other values
+        noise_level = 0.4
 
         class noise_scales:
-            dof_pos = 0.05
-            dof_vel = 0.5
-            ang_vel = 0.1
+            dof_pos = 0.03
+            dof_vel = 0.2
+            ang_vel = 0.08
             lin_vel = 0.05
-            quat = 0.03
+            quat = 0.02
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.18]
-        # y 0.1 rad
-        # rot = [0.0, 0.04998, 0.0, 0.99875]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-        #    'left_hip_yaw_joint' : 0. ,   
-        #    'left_hip_roll_joint' : 0,               
-        #    'left_hip_pitch_joint' : -2.0,         
-        #    'left_knee_joint' : -1.0,       
-        #    'left_ankle_joint' : -0.7,     
-
-        #    'right_hip_yaw_joint' : 0., 
-        #    'right_hip_roll_joint' : 0, 
-        #    'right_hip_pitch_joint' : 2.0,                                       
-        #    'right_knee_joint' : 1.0,                                             
-        #    'right_ankle_joint' : 0.7,     
-
-        #    'left_arm_pitch_joint' : -1.77,
-        #    'left_arm_roll_joint' : 0.0,
-
-
-        #    'right_arm_pitch_joint' : 1.77,
-        #    'right_arm_roll_joint' : 0.0,
-
-
-
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : 0,         
-           'left_knee_joint' : -0.0,       
-           'left_ankle_joint' : -0.0,     
+           'left_hip_pitch_joint' : -2.0,         
+           'left_knee_joint' : -1.0,       
+           'left_ankle_joint' : -0.7,     
 
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : 0.0,                                       
-           'right_knee_joint' : 0.0,                                             
-           'right_ankle_joint' : 0.0,     
+           'right_hip_pitch_joint' : 2.0,                                       
+           'right_knee_joint' : 1.0,                                             
+           'right_ankle_joint' : 0.7,     
 
-           'left_arm_pitch_joint' : 0,
+           'left_arm_pitch_joint' : -1.77,
            'left_arm_roll_joint' : 0.0,
 
 
-           'right_arm_pitch_joint' : 0,
+           'right_arm_pitch_joint' : 1.77,
            'right_arm_roll_joint' : 0.0,
+
+        #    'left_hip_yaw_joint' : 0. ,   
+        #    'left_hip_roll_joint' : 0,               
+        #    'left_hip_pitch_joint' : 0,         
+        #    'left_knee_joint' : 0,       
+        #    'left_ankle_joint' : 0,     
+        #    'right_hip_yaw_joint' : 0., 
+        #    'right_hip_roll_joint' : 0, 
+        #    'right_hip_pitch_joint' : 0,                                       
+        #    'right_knee_joint' : 0,                                             
+        #    'right_ankle_joint' : 0,   
         }
+
+    class random_init:
+        enabled = True
+        root_pos_xy = 0.05
+        root_pos_z_offset = [-0.02, 0.06]
+        root_rot_range = {
+            "roll": [-0.35, 0.35],
+            "pitch": [-0.35, 0.35],
+            "yaw": [-0.4, 0.4],
+        }
+        root_lin_vel_range = {
+            "x": [-0.25, 0.25],
+            "y": [-0.25, 0.25],
+            "z": [-0.1, 0.1],
+        }
+        root_ang_vel_range = {
+            "roll": [-0.8, 0.8],
+            "pitch": [-0.8, 0.8],
+            "yaw": [-0.8, 0.8],
+        }
+        joint_pos_range = {
+            "hip_pitch": 0.45,
+            "hip_roll": 0.12,
+            "hip_yaw": 0.12,
+            "knee": 0.45,
+            "ankle": 0.3,
+            "arm_pitch": 0.4,
+            "arm_roll": 0.25,
+        }
+        joint_vel = 0.5
+
+    class recovery:
+        orientation_threshold = 0.18
+        ang_vel_threshold = 0.6
+        lin_vel_threshold = 0.35
+        joint_error_threshold = 0.22
+        stable_steps = 8
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
@@ -179,137 +194,97 @@ class PikachuQuadCfg(LeggedRobotCfg):
         #              }  # [N*m/rad]  
         
 
-        # Kp_joint = Kp_motor × N^2
-        # Kd_joint = Kd_motor × N^2
-
         stiffness = {'hip_pitch': 20,
-                     'hip_roll': 9,  # 1*3*3
-                     'hip_yaw': 13.5,  # 1.5 *3*3=13.5
+                     'hip_roll': 9,
+                     'hip_yaw': 13.5,
                      'knee': 20,
-                     'ankle': 18, # 2*3*3
-                     'arm_pitch': 20, 
-                     'arm_roll': 18, #2*3*3
-                     }  # [N*m/rad]
+                     'ankle': 18,
+                     'arm_pitch': 2, 
+                     'arm_roll': 18,
+                     }
         
         damping = {  'hip_pitch': 0.2,
                      'hip_roll': 0,
                      'hip_yaw': 0,
                      'knee': 0.9,
                      'ankle': 0.45,
-                     'arm_pitch': 0.05,
-                     'arm_roll': 0.09,     
-                     }  # [N*m/rad]  
+                     'arm_pitch': 0.45,
+                     'arm_roll': 0.09,
+                     }
         
-        # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
-        # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 1  # 1000Hz - aligned with 1000Hz sampling and control in reality
+        decimation = 10
 
     class sim(LeggedRobotCfg.sim):
-        dt = 0.001  # 1000 Hz - control timestep aligned with 1000Hz real system
+        dt = 0.001
         substeps = 1
-        up_axis = 1  # 0 is y, 1 is z
+        up_axis = 1
 
         class physx(LeggedRobotCfg.sim.physx):
             num_threads = 10
             solver_type = 1  # 0: pgs, 1: tgs
             num_position_iterations = 4
             num_velocity_iterations = 1
-            contact_offset = 0.01  # [m]
-            rest_offset = 0.0   # [m]
-            bounce_threshold_velocity = 0.1  # [m/s]
+            contact_offset = 0.01
+            rest_offset = 0.0
+            bounce_threshold_velocity = 0.1
             max_depenetration_velocity = 1.0
-            max_gpu_contact_pairs = 2**23  # 2**24 -> needed for 8000 envs and more
+            max_gpu_contact_pairs = 2**23
             default_buffer_size_multiplier = 5
-            # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
             contact_collection = 2
 
     class domain_rand:
         randomize_friction = True
-        friction_range = [0.1, 2.0]
+        friction_range = [0.4, 1.25]
         randomize_base_mass = True
-        added_mass_range = [-0.2, 0.2]
+        added_mass_range = [-0.15, 0.15]
         push_robots = True
         push_interval_s = 4
-        max_push_vel_xy = 0.2
-        max_push_ang_vel = 0.4
-        # dynamic randomization
-        action_delay = 0.5
-        action_noise = 0.02
+        max_push_vel_xy = 0.5
+        max_push_ang_vel = 0.5
+        action_delay = 0.2
+        action_noise = 0.01
 
     class commands(LeggedRobotCfg.commands):
-        # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         num_commands = 4
-        resampling_time = 8.  # time before command are changed[s]
-        heading_command = True  # if true: compute ang vel command from heading error
+        resampling_time = 8.
+        heading_command = False
 
         class ranges:
-            lin_vel_x = [-0.3, 0.6]   # min max [m/s]
-            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
-            ang_vel_yaw = [-0.3, 0.3] # min max [rad/s]
-            heading = [-3.14, 3.14]
+            lin_vel_x = [0.0, 0.0]
+            lin_vel_y = [0.0, 0.0]
+            ang_vel_yaw = [0.0, 0.0]
+            heading = [0.0, 0.0]
 
     class rewards:
         base_height_target = 0.13
-        # distance between 2 leg? 0.17~0.18
         min_dist = 0.1
         max_dist = 0.3
-        # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.2     # rad
-        target_feet_height = 0.03        # m
-        cycle_time = 0.56                # sec
+        target_joint_pos_scale = 0.0
+        target_feet_height = 0.0
+        cycle_time = 1.0
 
-        # Reference sign for each leg in compute_ref_state.
-        # Pikachu V025 left/right joint positive directions are aligned.
-
-        # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
-        # tracking reward = exp(error*sigma)
         tracking_sigma = 5
-        # tracking_sigma = 0.25
-        max_contact_force = 100  # Forces above this value are penalized
+        max_contact_force = 100
 
         class scales:
-            # reference motion tracking
-            joint_pos = 5
-            # 抬脚高度奖励
-            feet_clearance = 2.5
-            # 每只脚接触顺序
-            feet_contact_number = 2
-            hand_contact_number = 2
-            # gait
-            feet_air_time = 1.5
-            # 脚滑奖励（惩罚）
-            foot_slip = -0.9
-            hand_slip = -0.9
-
-            contact_no_vel = -1
-            feet_distance = 0.2
+            orientation = 4.0
+            base_height = 2.0
+            default_joint_pos = 3.0
+            feet_distance = 0.3
             knee_distance = 0.2
-            # contact
-            feet_contact_forces = -0.01
-            # vel tracking
-            tracking_lin_vel = 1.5 # 1.5
-            tracking_ang_vel = 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.5 #0.2
-            track_vel_hard = 0.5 #0.5
-            stand_still = -0.2
-
-            # base pos
-            default_joint_pos = 0.1
-            default_joint_pos_left = 0.5
-            default_joint_pos_right = 0.5
-
-            orientation = 2
-            base_height = 0.2
-            base_acc = 0.01
-            # energy
+            tracking_lin_vel = 1.0
+            tracking_ang_vel = 1.0
+            vel_mismatch_exp = 1.0
+            stand_still = -0.5
+            base_acc = 0.02
             action_smoothness = -0.002
-            torques = -1e-4
-            dof_vel = -5e-4
+            torques = -2e-4
+            dof_vel = -1e-3
             dof_acc = -1e-7
-            collision = -1.
+            feet_contact_forces = -0.005
+            collision = -1.0
 
     class normalization:
         class obs_scales:
@@ -323,9 +298,9 @@ class PikachuQuadCfg(LeggedRobotCfg):
         clip_actions = 18.
 
 
-class PikachuQuadCfgPPO(LeggedRobotCfgPPO):
+class PikachuQuadStandCfgPPO(LeggedRobotCfgPPO):
     seed = 5
-    runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
+    runner_class_name = 'OnPolicyRunner'
 
     class policy:
         init_noise_std = 1.0
@@ -343,18 +318,16 @@ class PikachuQuadCfgPPO(LeggedRobotCfgPPO):
     class runner:
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
-        num_steps_per_env = 60  # per iteration
-        max_iterations = 30001  # number of policy updates
+        num_steps_per_env = 60
+        max_iterations = 3001
 
-        # logging
-        save_interval = 100  # Please check for potential savings every `save_interval` iterations.
-        experiment_name = 'Pikachu_V025_Quad'
+        save_interval = 100
+        experiment_name = 'Pikachu_V025_Quad_Stand'
         run_name = ''
-        # Load and resume
         resume = False
-        load_run = -1  # -1 = last run
-        checkpoint = -1  # -1 = last saved model
-        resume_path = None  # updated from load_run and chkpt
+        load_run = -1
+        checkpoint = -1
+        resume_path = None
 
 # =========刚体顺序=========
 # ['world', 'left_arm_pitch_link', 'left_arm_roll_link', 'left_arm_yaw_link', 'left_elbow_ankle_link', 'left_hip_pitch_link', 'left_hip_roll_link', 'left_hip_yaw_link', 'left_knee_link', 'left_ankle_link', 'right_arm_pitch_link', 'right_arm_roll_link', 'right_arm_yaw_link', 'right_elbow_ankle_link', 'right_hip_pitch_link', 'right_hip_roll_link', 'right_hip_yaw_link', 'right_knee_link', 'right_ankle_link']

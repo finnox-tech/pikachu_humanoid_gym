@@ -42,12 +42,22 @@ from .pikachu_v025.pikachu_v025_config import (
     PikachuCfgPPO as PikachuV025CfgPPO,
 )
 from .pikachu_v025.pikachu_v025_env import PikachuEnv as PikachuV025Env
+from .pikachu_v025_stand.pikachu_v025_config import (
+    PikachuStandCfg,
+    PikachuStandCfgPPO,
+)
+from .pikachu_v025_stand.pikachu_v025_env import PikachuStandEnv
 
 from .pikachu_v025_quad.pikachu_v025_quad_config import (
     PikachuQuadCfg,
     PikachuQuadCfgPPO,
 )
 from .pikachu_v025_quad.pikachu_v025_quad_env import PikachuQuadEnv
+from .pikachu_v025_quad_stand.pikachu_v025_quad_config import (
+    PikachuQuadStandCfg,
+    PikachuQuadStandCfgPPO,
+)
+from .pikachu_v025_quad_stand.pikachu_v025_quad_env import PikachuQuadStandEnv
 
 from .pikachu_v025_transfer.pikachu_v025_transfer_config import (
     PikachuTransferCfg,
@@ -61,5 +71,7 @@ from humanoid.utils.task_registry import task_registry
 task_registry.register( "humanoid_ppo", XBotLFreeEnv, XBotLCfg(), XBotLCfgPPO() )
 task_registry.register( "Pikachu_V01", PikachuEnv, PikachuCfg(), PikachuCfgPPO() )
 task_registry.register( "Pikachu_V025", PikachuV025Env, PikachuV025Cfg(), PikachuV025CfgPPO() )
+task_registry.register( "Pikachu_V025_Stand", PikachuStandEnv, PikachuStandCfg(), PikachuStandCfgPPO() )
 task_registry.register( "Pikachu_V025_Quad", PikachuQuadEnv, PikachuQuadCfg(), PikachuQuadCfgPPO() )
+task_registry.register( "Pikachu_V025_Quad_Stand", PikachuQuadStandEnv, PikachuQuadStandCfg(), PikachuQuadStandCfgPPO() )
 task_registry.register( "Pikachu_V025_Tran", PikachuTransferEnv, PikachuTransferCfg(), PikachuTransferCfgPPO() )

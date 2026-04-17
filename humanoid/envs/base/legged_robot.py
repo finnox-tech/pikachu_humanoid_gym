@@ -86,6 +86,10 @@ class LeggedRobot(BaseTask):
         self._get_commands_from_keyboard = self.cfg.env.get_commands_from_keyboard
         self._debug = self.cfg.env.debug
 
+
+        self.actions_target  = torch.zeros((self.num_envs, self.num_actions), device=self.device)
+        self.actions_error = torch.zeros((self.num_envs, self.num_actions), device=self.device)
+
         self.filtered_lin_vel_y=0
         if self._get_commands_from_keyboard:
             pygame.init()

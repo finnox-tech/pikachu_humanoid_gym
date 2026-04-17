@@ -30,14 +30,15 @@
 
 import asyncio
 import json
+from pathlib import Path
 import queue
 import threading
 import math
+import xml.etree.ElementTree as ET
 from collections import deque
 
 import mujoco
 import numpy as np
-import websockets
 
 from humanoid import LEGGED_GYM_ROOT_DIR
 
@@ -45,6 +46,8 @@ from humanoid import LEGGED_GYM_ROOT_DIR
 def _ws_sender_task(ws_queue, ws_uri='ws://localhost:8765'):
     async def _run():
         try:
+            import websockets
+
             async with websockets.connect(ws_uri) as ws:
                 await ws.send(json.dumps({'client_type': 'sim'}))
                 while True:
@@ -63,6 +66,86 @@ def start_ws_sender(ws_queue, ws_uri='ws://localhost:8765'):
     th = threading.Thread(target=_ws_sender_task, args=(ws_queue, ws_uri), daemon=True)
     th.start()
     return th
+
+
+def _collect_body_names(root):
+    return {elem.get("name") for elem in root.iter("body") if elem.get("name")}
+
+
+def _prepare_mujoco_model_xml(model_xml_path):
+    model_path = Path(model_xml_path).resolve()
+    model_tree = ET.parse(model_path)
+    model_root = model_tree.getroot()
+    body_names = _collect_body_names(model_root)
+
+    generated_paths = []
+    patched_model = False
+
+    for include_elem in model_root.iter("include"):
+        include_file = include_elem.get("file")
+        if not include_file:
+            continue
+
+        include_path = (model_path.parent / include_file).resolve()
+        if include_path.name != "contact.xml" or not include_path.exists():
+            continue
+
+        include_tree = ET.parse(include_path)
+        include_root = include_tree.getroot()
+        contact_elem = include_root.find("contact")
+        if contact_elem is None:
+            continue
+
+        removed_pairs = []
+        for exclude_elem in list(contact_elem.findall("exclude")):
+            body1 = exclude_elem.get("body1")
+            body2 = exclude_elem.get("body2")
+            if body1 not in body_names or body2 not in body_names:
+                removed_pairs.append((body1, body2))
+                contact_elem.remove(exclude_elem)
+
+        if not removed_pairs:
+            continue
+
+        sanitized_include_path = include_path.with_name(
+            f"{include_path.stem}.sim2sim_sanitized{include_path.suffix}"
+        )
+        include_tree.write(sanitized_include_path, encoding="utf-8")
+        include_elem.set("file", sanitized_include_path.name)
+        generated_paths.append(sanitized_include_path)
+        patched_model = True
+
+        missing_names = sorted(
+            {
+                name
+                for pair in removed_pairs
+                for name in pair
+                if name and name not in body_names
+            }
+        )
+        print(
+            "[sim2sim] Removed"
+            f" {len(removed_pairs)} invalid contact excludes from {include_path.name}:"
+            f" missing bodies {missing_names}"
+        )
+
+    if not patched_model:
+        return str(model_path), []
+
+    sanitized_model_path = model_path.with_name(
+        f"{model_path.stem}.sim2sim_sanitized{model_path.suffix}"
+    )
+    model_tree.write(sanitized_model_path, encoding="utf-8")
+    generated_paths.append(sanitized_model_path)
+    return str(sanitized_model_path), generated_paths
+
+
+def _cleanup_generated_files(paths):
+    for path in paths:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def make_ws_entry(**kwargs):
@@ -139,7 +222,7 @@ class Sim2simCfg:
 
     class sim_config:
         mujoco_model_path = (
-            f"{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/mjcf_14dof/Pikachu_V025_quad_14dof.xml"
+            f"{LEGGED_GYM_ROOT_DIR}/resources/robots/Pikachu_V025/mjcf_14dof_lite/Pikachu_V025_quad_14dof_lite.xml"
         )
         sim_duration = 60.0
         dt = 0.001
@@ -152,9 +235,9 @@ class Sim2simCfg:
 
     class robot_config:
         default_q = DEFAULT_Q.copy()
-        kps = np.array([80, 50, 25, 50, 50, 80, 50, 25, 50, 50, 10, 10, 10, 10], dtype=np.double)
-        kds = np.array([1.0, 0.6, 0.05, 0.1, 0.01, 1.0, 0.6, 0.05, 0.1, 0.01, 0.0, 0.0, 0.0, 0.0], dtype=np.double)
-        tau_limit = 0.5 * np.array([12.5, 9.0, 9.0, 12.5, 9.0, 12.5, 9.0, 9.0, 12.5, 9.0, 9.0, 9.0, 9.0, 9.0], dtype=np.double)
+        kps = np.array([20, 9, 13.5, 20, 18, 20, 9, 13.5, 20, 18, 2, 18, 2, 18], dtype=np.double)
+        kds = np.array([0.2, 0.0, 0.0, 0.9, 0.45, 0.2, 0.0, 0.0, 0.9, 0.45, 0.45, 0.09, 0.45, 0.09], dtype=np.double)
+        tau_limit = 0.2 * np.array([12.5, 9.0, 9.0, 12.5, 9.0, 12.5, 9.0, 9.0, 12.5, 9.0, 9.0, 9.0, 9.0, 9.0], dtype=np.double)
 
 
         # <<------------- Actuator ------------->>
@@ -302,7 +385,11 @@ def run_mujoco(policy, cfg, ws_queue=None):
     import torch
     from tqdm import tqdm
 
-    model = mujoco.MjModel.from_xml_path(cfg.sim_config.mujoco_model_path)
+    model_xml_path, generated_files = _prepare_mujoco_model_xml(cfg.sim_config.mujoco_model_path)
+    try:
+        model = mujoco.MjModel.from_xml_path(model_xml_path)
+    finally:
+        _cleanup_generated_files(generated_files)
     model.opt.timestep = cfg.sim_config.dt
     data = mujoco.MjData(model)
 
@@ -415,18 +502,18 @@ def run_mujoco(policy, cfg, ws_queue=None):
                         last_action = action.copy()
 
                         # 4000 步内按三段插值：默认 -> 站立准备 -> 站立抬起
-                        if count_lowlevel < 500:
-                            t = float(count_lowlevel) / 500.0
-                            target_q = (1 - t) * cfg.robot_config.default_q + t * Q_stand_ready
-                        elif count_lowlevel < 2000:
-                            t = float(count_lowlevel - 500) / 1500.0
-                            target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
+                        # if count_lowlevel < 500:
+                        #     t = float(count_lowlevel) / 500.0
+                        #     target_q = (1 - t) * cfg.robot_config.default_q + t * Q_stand_ready
+                        # elif count_lowlevel < 2000:
+                        #     t = float(count_lowlevel - 500) / 1500.0
+                        #     target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
                             
                         # elif count_lowlevel < 1500:
                         #     t = float(count_lowlevel - 1000) / 500.0
                         #     target_q = (1 - t) * Q_stand_ready + t * Q_stand_up
                         # else:
-                        #     target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
+                        target_q = action * cfg.control.action_scale + cfg.robot_config.default_q
                 else:
                     # 250 步前也做移动插值过渡, 不直接用 default_q 固定体态
                     if count_lowlevel < 2000:
@@ -455,17 +542,33 @@ if __name__ == "__main__":
     import argparse
     import torch
 
+    default_load_model = (
+        f"{LEGGED_GYM_ROOT_DIR}/pre_train/Pikachu_V025_Quad/jit/policy_stand_still_quad_lite.pt"
+    )
     parser = argparse.ArgumentParser(description="Pikachu V025 sim2sim deployment script.")
-    parser.add_argument("--load_model", type=str, required=True, help="Run to load from.")
-    parser.add_argument("--ws_uri", type=str, default="ws://localhost:8765", help="WebSocket server URI")
+    parser.add_argument(
+        "--load_model",
+        type=str,
+        default=default_load_model,
+        help="Run to load from.",
+    )
+    parser.add_argument(
+        "--ws_uri",
+        type=str,
+        default=None,
+        help="WebSocket server URI. If omitted, websocket streaming is disabled.",
+    )
     args = parser.parse_args()
 
     policy = torch.jit.load(args.load_model)
 
-    ws_queue = queue.Queue(maxsize=1000)
-    start_ws_sender(ws_queue, args.ws_uri)
+    ws_queue = None
+    if args.ws_uri:
+        ws_queue = queue.Queue(maxsize=1000)
+        start_ws_sender(ws_queue, args.ws_uri)
 
     try:
         run_mujoco(policy, Sim2simCfg(), ws_queue)
     finally:
-        ws_queue.put(None)
+        if ws_queue is not None:
+            ws_queue.put(None)

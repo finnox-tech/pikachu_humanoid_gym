@@ -37,12 +37,11 @@ import torch
 from humanoid.envs import LeggedRobot
 
 from humanoid.utils.terrain import  HumanoidTerrain
-from humanoid.utils.live_plot import JointResponsePlotter
 import pygame
 from humanoid.utils.math import wrap_to_pi
 
 
-class PikachuQuadEnv(LeggedRobot):
+class PikachuQuadStandEnv(LeggedRobot):
     '''
     XBotLFreeEnv is a class that represents a custom environment for a legged robot.
 
@@ -80,17 +79,15 @@ class PikachuQuadEnv(LeggedRobot):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
         self._build_joint_index_cache()
         self._validate_observation_dims()
-        self._joint_response_plotter = None
-        self._debug_plot_env_index = 0
-        self._debug_plot_joint_indices = []
         self.last_feet_z = 0.05
         self.last_hand_z = 0.05
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.hand_height = torch.zeros((self.num_envs, 2), device=self.device)
+        self.recovery_success = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self.recovery_step = torch.full((self.num_envs,), -1.0, dtype=torch.float, device=self.device)
+        self.recovery_stable_count = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
-        self._init_debug_plotter()
-
 
     def _build_joint_index_cache(self):
         dof_name_to_idx = {name: i for i, name in enumerate(self.dof_names)}
@@ -100,25 +97,6 @@ class PikachuQuadEnv(LeggedRobot):
                 raise KeyError(f"Joint '{name}' not found in asset dof names: {self.dof_names}")
             return dof_name_to_idx[name]
 
-        # Reference gait controls hip pitch, knee and ankle for each leg.
-        self.left_ref_joint_indices = (
-            idx("left_hip_pitch_joint"),
-            idx("left_knee_joint"),
-            idx("left_ankle_joint"),
-            idx("left_arm_pitch_joint"),
-        )
-        self.right_ref_joint_indices = (
-            idx("right_hip_pitch_joint"),
-            idx("right_knee_joint"),
-            idx("right_ankle_joint"),
-            idx("right_arm_pitch_joint"),
-        )
-
-        # print("Reference joint indices:")
-        # print(f"Left leg: hip_pitch={self.left_ref_joint_indices[0]}, knee={self.left_ref_joint_indices[1]}, ankle={self.left_ref_joint_indices[2]}")
-        # print(f"Right leg: hip_pitch={self.right_ref_joint_indices[0]}, knee={self.right_ref_joint_indices[1]}, ankle={self.right_ref_joint_indices[2]}")
-      
-        # Default-joint reward explicitly constrains yaw and roll.
         self.left_yaw_roll_indices = (
             idx("left_hip_yaw_joint"),
             idx("left_hip_roll_joint"),
@@ -129,6 +107,15 @@ class PikachuQuadEnv(LeggedRobot):
             idx("right_hip_roll_joint"),
             idx("right_arm_roll_joint"),
         )
+        self.random_init_joint_groups = {
+            "hip_pitch": tuple(i for i, name in enumerate(self.dof_names) if "hip_pitch" in name),
+            "hip_roll": tuple(i for i, name in enumerate(self.dof_names) if "hip_roll" in name),
+            "hip_yaw": tuple(i for i, name in enumerate(self.dof_names) if "hip_yaw" in name),
+            "knee": tuple(i for i, name in enumerate(self.dof_names) if "knee" in name),
+            "ankle": tuple(i for i, name in enumerate(self.dof_names) if "ankle" in name),
+            "arm_pitch": tuple(i for i, name in enumerate(self.dof_names) if "arm_pitch" in name),
+            "arm_roll": tuple(i for i, name in enumerate(self.dof_names) if "arm_roll" in name),
+        }
 
     def _validate_observation_dims(self):
         expected_single_obs = 5 + 3 * self.num_actions + 6
@@ -144,46 +131,6 @@ class PikachuQuadEnv(LeggedRobot):
                 f"cfg.env.single_num_privileged_obs={self.cfg.env.single_num_privileged_obs} does not match "
                 f"expected {expected_single_priv_obs} for num_actions={self.num_actions}."
             )
-
-    def _init_debug_plotter(self):
-        if not self._debug or not getattr(self.cfg.env, "plot_debug", True):
-            return
-
-        env_index = int(getattr(self.cfg.env, "plot_env_index", 0))
-        self._debug_plot_env_index = max(0, min(env_index, self.num_envs - 1))
-
-        joint_indices = getattr(self.cfg.env, "plot_joint_indices", None)
-        if joint_indices is None:
-            joint_indices = list(range(self.num_actions))
-
-        self._debug_plot_joint_indices = [
-            int(idx) for idx in joint_indices if 0 <= int(idx) < self.num_actions
-        ]
-        if not self._debug_plot_joint_indices:
-            print("[PikachuQuadEnv] No valid plot_joint_indices found, live plot disabled.")
-            return
-
-        joint_names = [self.dof_names[idx] for idx in self._debug_plot_joint_indices]
-        self._joint_response_plotter = JointResponsePlotter(
-            joint_names=joint_names,
-            max_points=getattr(self.cfg.env, "plot_max_points", 600),
-            redraw_interval=getattr(self.cfg.env, "plot_redraw_interval", 2),
-            title=f"Pikachu Quad Actuator Response (env {self._debug_plot_env_index})",
-        )
-
-    def _update_debug_plotter(self):
-        if self._joint_response_plotter is None:
-            return
-
-        env_index = self._debug_plot_env_index
-        joint_indices = self._debug_plot_joint_indices
-        target = self.actions_target[env_index, joint_indices].detach().cpu().numpy()
-        actual = self.dof_pos[env_index, joint_indices].detach().cpu().numpy()
-        self._joint_response_plotter.update(
-            step=int(self.common_step_counter),
-            target=target,
-            actual=actual,
-        )
 
     def _push_robots(self):
         """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity. 
@@ -202,72 +149,201 @@ class PikachuQuadEnv(LeggedRobot):
         self.gym.set_actor_root_state_tensor(
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
-    def  _get_phase(self):
-        cycle_time = self.cfg.rewards.cycle_time
-        phase = self.episode_length_buf * self.dt / cycle_time
-        return phase
+    @staticmethod
+    def _quat_from_euler_xyz(roll, pitch, yaw):
+        half_roll = 0.5 * roll
+        half_pitch = 0.5 * pitch
+        half_yaw = 0.5 * yaw
+
+        cr = torch.cos(half_roll)
+        sr = torch.sin(half_roll)
+        cp = torch.cos(half_pitch)
+        sp = torch.sin(half_pitch)
+        cy = torch.cos(half_yaw)
+        sy = torch.sin(half_yaw)
+
+        x = sr * cp * cy - cr * sp * sy
+        y = cr * sp * cy + sr * cp * sy
+        z = cr * cp * sy - sr * sp * cy
+        w = cr * cp * cy + sr * sp * sy
+        return torch.stack((x, y, z, w), dim=1)
+
+    def  _get_phase(self): # 0
+        return torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
 
     def _get_gait_phase(self):
-        # return float mask 1 is stance, 0 is swing
-        phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
-        # Add double support phase
-        stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
-        # left foot stance
-        stance_mask[:, 0] = sin_pos >= 0
-        # right foot stance
-        stance_mask[:, 1] = sin_pos < 0
-        # Double support phase
-        stance_mask[torch.abs(sin_pos) < 0.1] = 1
-
-        return stance_mask
+        return torch.ones((self.num_envs, 2), device=self.device, dtype=torch.float)
     
 
     def compute_ref_state(self):
-        phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos_l = sin_pos.clone()
-        sin_pos_r = sin_pos.clone()
-        self.ref_dof_pos = torch.zeros_like(self.dof_pos)
-        scale_1 = self.cfg.rewards.target_joint_pos_scale
-        scale_2 = 2 * scale_1
-        scale_3 = 1 * scale_1
-        # # left foot stance phase set to default joint pos
-        # sin_pos_l[sin_pos_l > 0] = 0
-        # self.ref_dof_pos[:, self.left_ref_joint_indices[0]] =  sin_pos_l * scale_1
-        # self.ref_dof_pos[:, self.left_ref_joint_indices[1]] =  sin_pos_l * scale_2
-        # self.ref_dof_pos[:, self.left_ref_joint_indices[2]] =  sin_pos_l * scale_1
+        self.ref_dof_pos = self.default_joint_pd_target.expand_as(self.dof_pos).clone()
+        self.ref_action = torch.zeros_like(self.dof_pos)
 
-        # # right foot stance phase set to default joint pos
-        # sin_pos_r[sin_pos_r < 0] = 0
-        # self.ref_dof_pos[:, self.right_ref_joint_indices[0]] =  sin_pos_r * scale_1
-        # self.ref_dof_pos[:, self.right_ref_joint_indices[1]] =  sin_pos_r * scale_2
-        # self.ref_dof_pos[:, self.right_ref_joint_indices[2]] =  sin_pos_r * scale_1
+    def _get_recovery_ready_mask(self):
+        recovery_cfg = self.cfg.recovery
+        joint_error = torch.max(
+            torch.abs(self.dof_pos - self.default_joint_pd_target), dim=1
+        ).values
+        attitude_ok = torch.all(
+            torch.abs(self.base_euler_xyz[:, :2]) < recovery_cfg.orientation_threshold,
+            dim=1,
+        )
+        ang_vel_ok = torch.norm(self.base_ang_vel, dim=1) < recovery_cfg.ang_vel_threshold
+        lin_vel_ok = torch.norm(self.base_lin_vel[:, :2], dim=1) < recovery_cfg.lin_vel_threshold
+        joint_ok = joint_error < recovery_cfg.joint_error_threshold
+        return attitude_ok & ang_vel_ok & lin_vel_ok & joint_ok
 
-        # self.ref_dof_pos[:, self.left_ref_joint_indices[3]]  = -sin_pos_r * scale_3
-        # self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_l * scale_3
+    def _update_recovery_stats(self):
+        ready_mask = self._get_recovery_ready_mask()
+        self.recovery_stable_count = torch.where(
+            ready_mask,
+            self.recovery_stable_count + 1,
+            torch.zeros_like(self.recovery_stable_count),
+        )
+        newly_recovered = (
+            ~self.recovery_success
+            & (self.recovery_stable_count >= self.cfg.recovery.stable_steps)
+        )
+        self.recovery_success |= newly_recovered
+        self.recovery_step[newly_recovered] = self.episode_length_buf[newly_recovered].float()
 
+    def _reset_dofs(self, env_ids):
+        if len(env_ids) == 0:
+            return
+        random_init_cfg = getattr(self.cfg, "random_init", None)
+        if random_init_cfg is None or not random_init_cfg.enabled:
+            return super()._reset_dofs(env_ids)
 
-        # bound gait
-        # left foot stance phase set to default joint pos
-        sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, self.left_ref_joint_indices[0]] =  sin_pos_l * scale_1
-        self.ref_dof_pos[:, self.left_ref_joint_indices[1]] =  sin_pos_l * scale_2
-        self.ref_dof_pos[:, self.left_ref_joint_indices[2]] =  sin_pos_l * scale_1
+        default_dof = self.default_dof_pos.expand(len(env_ids), -1)
+        dof_pos = default_dof.clone()
 
-        # right foot stance phase set to default joint pos
-        sin_pos_r[sin_pos_r < 0] = 0
-        self.ref_dof_pos[:, self.right_ref_joint_indices[0]] =  -sin_pos_l * scale_1
-        self.ref_dof_pos[:, self.right_ref_joint_indices[1]] =  -sin_pos_l * scale_2
-        self.ref_dof_pos[:, self.right_ref_joint_indices[2]] =  -sin_pos_l * scale_1
+        for group_name, magnitude in random_init_cfg.joint_pos_range.items():
+            indices = self.random_init_joint_groups.get(group_name, ())
+            if not indices:
+                continue
+            offsets = torch_rand_float(
+                -magnitude,
+                magnitude,
+                (len(env_ids), len(indices)),
+                device=self.device,
+            )
+            dof_pos[:, list(indices)] += offsets
 
-        self.ref_dof_pos[:, self.left_ref_joint_indices[3]]  =  sin_pos_r * scale_3
-        self.ref_dof_pos[:, self.right_ref_joint_indices[3]] = -sin_pos_r * scale_3
+        lower_limits = self.dof_pos_limits[:, 0].unsqueeze(0)
+        upper_limits = self.dof_pos_limits[:, 1].unsqueeze(0)
+        dof_pos = torch.maximum(torch.minimum(dof_pos, upper_limits), lower_limits)
 
-        # Double support phase
-        self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
+        self.dof_pos[env_ids] = dof_pos
+        self.dof_vel[env_ids] = torch_rand_float(
+            -random_init_cfg.joint_vel,
+            random_init_cfg.joint_vel,
+            (len(env_ids), self.num_dof),
+            device=self.device,
+        )
 
-        self.ref_action = 2 * self.ref_dof_pos
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_dof_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self.dof_state),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32),
+        )
+
+    def _reset_root_states(self, env_ids):
+        if len(env_ids) == 0:
+            return
+        random_init_cfg = getattr(self.cfg, "random_init", None)
+        if random_init_cfg is None or not random_init_cfg.enabled:
+            return super()._reset_root_states(env_ids)
+
+        if self.custom_origins:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+        else:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+
+        self.root_states[env_ids, 0:2] += torch_rand_float(
+            -random_init_cfg.root_pos_xy,
+            random_init_cfg.root_pos_xy,
+            (len(env_ids), 2),
+            device=self.device,
+        )
+        self.root_states[env_ids, 2] += torch_rand_float(
+            random_init_cfg.root_pos_z_offset[0],
+            random_init_cfg.root_pos_z_offset[1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+
+        roll = torch_rand_float(
+            random_init_cfg.root_rot_range["roll"][0],
+            random_init_cfg.root_rot_range["roll"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        pitch = torch_rand_float(
+            random_init_cfg.root_rot_range["pitch"][0],
+            random_init_cfg.root_rot_range["pitch"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        yaw = torch_rand_float(
+            random_init_cfg.root_rot_range["yaw"][0],
+            random_init_cfg.root_rot_range["yaw"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 3:7] = self._quat_from_euler_xyz(roll, pitch, yaw)
+
+        self.root_states[env_ids, 7] = torch_rand_float(
+            random_init_cfg.root_lin_vel_range["x"][0],
+            random_init_cfg.root_lin_vel_range["x"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 8] = torch_rand_float(
+            random_init_cfg.root_lin_vel_range["y"][0],
+            random_init_cfg.root_lin_vel_range["y"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 9] = torch_rand_float(
+            random_init_cfg.root_lin_vel_range["z"][0],
+            random_init_cfg.root_lin_vel_range["z"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 10] = torch_rand_float(
+            random_init_cfg.root_ang_vel_range["roll"][0],
+            random_init_cfg.root_ang_vel_range["roll"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 11] = torch_rand_float(
+            random_init_cfg.root_ang_vel_range["pitch"][0],
+            random_init_cfg.root_ang_vel_range["pitch"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+        self.root_states[env_ids, 12] = torch_rand_float(
+            random_init_cfg.root_ang_vel_range["yaw"][0],
+            random_init_cfg.root_ang_vel_range["yaw"][1],
+            (len(env_ids), 1),
+            device=self.device,
+        ).squeeze(1)
+
+        if self.cfg.asset.fix_base_link:
+            self.root_states[env_ids, 7:13] = 0
+            self.root_states[env_ids, 2] += 1.8
+
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self.root_states),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32),
+        )
 
 
     def create_sim(self):
@@ -332,13 +408,11 @@ class PikachuQuadEnv(LeggedRobot):
         self.action_buffer.append(actions.clone())
         actions = self.action_buffer.pop(0)
 
+
         # dynamic randomization
         delay = torch.rand((self.num_envs, 1), device=self.device) * self.cfg.domain_rand.action_delay #0.5
         actions = (1 - delay) * actions + delay * self.actions
         actions += self.cfg.domain_rand.action_noise * torch.randn_like(actions) * actions
-
-        self.actions_target = actions.clone() * self.cfg.control.action_scale + self.default_dof_pos
-        self.actions_error = self.actions_target - self.dof_pos
         return super().step(actions)
 
 
@@ -383,15 +457,13 @@ class PikachuQuadEnv(LeggedRobot):
             # print(self.commands[0])
             pygame.event.pump()  # process event queue
 
-        phase = self._get_phase()
         self.compute_ref_state()
 
-        sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
-        cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
+        sin_pos = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float)
+        cos_pos = torch.ones((self.num_envs, 1), device=self.device, dtype=torch.float)
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > self.cfg.env.foot_contact_force
-        hand_contact_mask = self.contact_forces[:, self.hand_indices, 2] > self.cfg.env.foot_contact_force
         self.command_input = torch.cat(
             (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
         
@@ -446,17 +518,16 @@ class PikachuQuadEnv(LeggedRobot):
 
         self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)  # N, T*K
         self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
+        self._update_recovery_stats()
 
 # ================================================ Debugs ================================================== #
         if self._debug:
-            self._update_debug_plotter()
 
             # obs
             # print(self.base_euler_xyz * self.obs_scales.quat)
             # print(self.base_ang_vel * self.obs_scales.ang_vel)
             # print(self.actions)
             # print(self.torques)
-
 
             measured_heights = torch.sum(
                 self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
@@ -553,7 +624,24 @@ class PikachuQuadEnv(LeggedRobot):
 # ================================================ Debugs ================================================== #
 
     def reset_idx(self, env_ids):
+        recovery_rate = None
+        recovery_time = None
+        if len(env_ids) > 0 and hasattr(self, "recovery_success"):
+            success_mask = self.recovery_success[env_ids]
+            recovery_rate = success_mask.float().mean()
+            if torch.any(success_mask):
+                recovery_time = (
+                    self.recovery_step[env_ids][success_mask].float() * self.dt
+                ).mean()
+            else:
+                recovery_time = torch.tensor(0.0, device=self.device)
         super().reset_idx(env_ids)
+        if recovery_rate is not None:
+            self.extras["episode"]["recovery_rate"] = recovery_rate
+            self.extras["episode"]["recovery_time"] = recovery_time
+            self.recovery_success[env_ids] = False
+            self.recovery_step[env_ids] = -1.0
+            self.recovery_stable_count[env_ids] = 0
         for i in range(self.obs_history.maxlen):
             self.obs_history[i][env_ids] *= 0
         for i in range(self.critic_history.maxlen):
@@ -566,11 +654,9 @@ class PikachuQuadEnv(LeggedRobot):
         Calculates the reward based on the difference between the current joint positions and the target joint positions.
         """
         joint_pos = self.dof_pos.clone()
-        pos_target = self.ref_dof_pos.clone()
+        pos_target = self.default_joint_pd_target.clone()
         diff = joint_pos - pos_target
-        command_mask = (torch.norm(self.commands[:, :2], dim=1) > 0.1) # 指令大于0.1的时候才给参考动作奖励
         r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(diff, dim=1).clamp(0, 0.5)
-        # return r*command_mask
         return r
 
     def _reward_feet_clearance(self):
