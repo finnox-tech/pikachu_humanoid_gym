@@ -191,6 +191,6 @@ def play(args):
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RENDER = False
-    FIX_COMMAND = True
+    FIX_COMMAND = False
     args = get_args()
     play(args)
